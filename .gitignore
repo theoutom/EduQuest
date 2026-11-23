@@ -1,0 +1,8 @@
+/.local/
+/.hallmark/shots/
+/node_modules/
+/.env
+/.env.*
+!/.env.example
+/.vercel/
+/test-artifacts/

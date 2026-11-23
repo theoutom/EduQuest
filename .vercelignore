@@ -1,0 +1,17 @@
+.local/
+.env*
+.git/
+.agents/
+.codex/
+.aws/
+.hallmark/
+.vercel/
+node_modules/
+test-artifacts/
+tests/
+database/
+docs/
+stitch_educational_learning_platform_design/
+stitch_educational_learning_platform_prd/
+public/assets/fonts/
+public/assets/app.css

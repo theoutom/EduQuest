@@ -1,0 +1,23 @@
+FROM node:24-alpine AS assets
+WORKDIR /build
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY scripts/copy-fonts.mjs scripts/
+COPY views views/
+COPY assets assets/
+RUN npm run build
+
+FROM dunglas/frankenphp:1-php8.4-alpine
+WORKDIR /app
+RUN install-php-extensions pdo_pgsql mbstring curl \
+    && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && php -r 'exit(extension_loaded("pdo_pgsql") && extension_loaded("mbstring") && extension_loaded("curl") && defined("PASSWORD_ARGON2ID") && in_array("argon2id", password_algos(), true) ? 0 : 1);'
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY app app/
+COPY views views/
+COPY public/index.php public/index.php
+COPY public/assets/app.js public/assets/app.js
+COPY --from=assets /build/public/assets/ public/assets/
+ENV EDUQUEST_SECURE_COOKIES=1
+EXPOSE 80
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
