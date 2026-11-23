@@ -72,6 +72,16 @@ final class Auth
         }
     }
 
+    public function startDemo(): array
+    {
+        $token = bin2hex(random_bytes(32));
+        $created = $this->query('SELECT eduquest.start_public_demo(?)', [hash('sha256', $token)])->fetchColumn();
+        if (!$created) {
+            throw new QuizProblem(429, 'Kapasitas demo sedang penuh. Coba lagi sebentar.');
+        }
+        return ['token' => $token, 'duration' => 3600, 'role' => 'student'];
+    }
+
     public function current(string $token): ?array
     {
         return $this->query(<<<'SQL'

@@ -7,6 +7,11 @@ function demoPreview(): bool
     return getenv('VERCEL_ENV') === 'preview' && getenv('EDUQUEST_DEMO_MODE') === '1';
 }
 
+function publicDemo(): bool
+{
+    return getenv('EDUQUEST_PUBLIC_DEMO') === '1';
+}
+
 function h(string|int|null $text): string
 {
     return htmlspecialchars((string) $text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

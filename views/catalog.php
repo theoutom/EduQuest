@@ -26,6 +26,7 @@
         <select name="status">
             <option value="">Semua status</option>
             <?php foreach ($states as $value => $label): ?>
+                <?php if (publicDemo() && $value === 'tersimpan') continue; ?>
                 <option value="<?= h($value) ?>" <?= $filters['status'] === $value ? 'selected' : '' ?>><?= h($label) ?></option>
             <?php endforeach; ?>
         </select>
@@ -62,10 +63,10 @@
             <?php else: ?>
                 <a class="button button-quiet" href="<?= h(quizLink($item)) ?>">Lihat kuis<span class="sr-only"> <?= h($item['title']) ?></span></a>
             <?php endif; ?>
-                <form method="post" action="<?= h(quizLink($item) . '/simpanan' . ($query === '' ? '' : '?' . $query)) ?>">
+                <?php if (!publicDemo()): ?><form method="post" action="<?= h(quizLink($item) . '/simpanan' . ($query === '' ? '' : '?' . $query)) ?>">
                     <?php csrfField($csrf); ?>
                     <button class="button button-quiet" name="saved" value="<?= $item['bookmarked'] ? '0' : '1' ?>" type="submit"><?= $item['bookmarked'] ? 'Hapus simpanan' : 'Simpan kuis' ?><span class="sr-only"> <?= h($item['title']) ?></span></button>
-                </form>
+                </form><?php endif; ?>
             </div>
         </article>
     <?php endforeach; ?>

@@ -62,7 +62,7 @@
             <?php endforeach; ?>
         </ul>
     </section>
-    <section class="panel dashboard-mentor">
+    <?php if (!publicDemo()): ?><section class="panel dashboard-mentor">
         <h2>Sesi mentor berikutnya</h2>
         <?php if ($mentor !== null): ?>
             <p><?= h($mentor['mentor_name']) ?></p>
@@ -72,7 +72,7 @@
             <p class="muted">Belum ada sesi terkonfirmasi.</p>
             <a class="button button-quiet" href="/mentor">Cari mentor</a>
         <?php endif; ?>
-    </section>
+    </section><?php endif; ?>
 </div>
 <section class="dashboard-catalog" aria-labelledby="dashboard-catalog-title">
     <header class="section-heading">

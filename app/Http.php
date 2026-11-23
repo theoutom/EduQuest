@@ -42,6 +42,9 @@ final class Http
             || !hash_equals($this->csrf, $this->input($_POST, 'csrf')))) {
             throw new QuizProblem(403, 'Formulir sudah kedaluwarsa. Muat ulang halaman dan coba lagi.');
         }
+        if (publicDemo() && !$this->publicDemoRoute()) {
+            throw new QuizProblem(403, 'Demo publik menyediakan latihan kuis dan pembahasan.');
+        }
         if ($this->path === '/masuk') {
             $this->login();
             return;
@@ -96,7 +99,7 @@ final class Http
                 'ongoing' => $this->quiz->activeSessions($student, (int) ($featured['active_id'] ?? 0)),
                 'progress' => $this->quiz->progress($student),
                 'activity' => $this->quiz->weeklyActivity($student),
-                'mentor' => (new Mentor($this->db))->nextSession($student),
+                'mentor' => publicDemo() ? null : (new Mentor($this->db))->nextSession($student),
             ]);
             return;
         }
@@ -168,7 +171,7 @@ final class Http
                 return;
             }
             $this->page('profile', 'Profil dan Riwayat', [
-                'details' => $profile->details($student),
+                'details' => publicDemo() ? [] : $profile->details($student),
                 'history' => $this->quiz->history($student),
                 'progress' => $this->quiz->progress($student),
                 'saved' => $this->input($_GET, 'tersimpan') === '1',
@@ -317,6 +320,17 @@ final class Http
         ));
     }
 
+    private function publicDemoRoute(): bool
+    {
+        if ($this->student !== null && $this->student['role'] !== 'student') {
+            return false;
+        }
+        $pattern = $this->method === 'POST'
+            ? '~^/(?:masuk|keluar|kuis/[a-z0-9-]+/mulai|sesi/\d+/(?:jawaban|kumpulkan))$~D'
+            : '~^/(?:masuk|profil|kuis(?:/[a-z0-9-]+)?|sesi/\d+(?:/kumpulkan)?|hasil/\d+)?$~D';
+        return preg_match($pattern, $this->path) === 1;
+    }
+
     private function login(): void
     {
         if ($this->student !== null) {
@@ -325,9 +339,11 @@ final class Http
         }
         $message = '';
         if ($this->method === 'POST') {
-            $username = Auth::username($this->input($_POST, 'username'));
-            $password = $this->input($_POST, 'password');
-            $login = $this->auth->login($username, $password, $_SERVER['REMOTE_ADDR'] ?? 'unknown');
+            $login = publicDemo() ? $this->auth->startDemo() : $this->auth->login(
+                Auth::username($this->input($_POST, 'username')),
+                $this->input($_POST, 'password'),
+                $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            );
             if ($login !== null) {
                 $this->cookie(self::SESSION, $login['token'], time() + $login['duration']);
                 $this->cookie(self::CSRF, '', time() - 3600);

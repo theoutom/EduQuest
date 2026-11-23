@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 const php = process.env.EDUQUEST_PHP ?? 'php';
 const suites = process.argv.slice(2);
 const enabled = suite => suites.length === 0 || suites.includes(suite);
+const publicDemo = suites.includes('public-demo');
 const phpFlags = [];
 const evaluate = (code, options = {}) => execFileSync(php, [...phpFlags, '-r', code], { encoding: 'utf8', ...options }).trim();
 if (process.platform === 'win32' && evaluate('echo (int) extension_loaded("pdo_pgsql");') !== '1') {
@@ -54,7 +55,7 @@ try {
   if (enabled('tutor')) await command(php, [...phpFlags, 'tests/tutor-gateway.php'], env);
   await command(php, [...phpFlags, 'scripts/migrate.php'], env);
   if (enabled('quiz')) await command(php, [...phpFlags, 'tests/quiz.php'], env);
-  if (enabled('http') || enabled('browser') || enabled('auth') || enabled('crud') || enabled('community') || enabled('tutor') || enabled('mentor')) {
+  if (publicDemo || enabled('http') || enabled('browser') || enabled('auth') || enabled('crud') || enabled('community') || enabled('tutor') || enabled('mentor')) {
     for (const [username, role, label] of [['satrio', 'student', 'Satrio'], ['nadia', 'student', 'Nadia'], ['operator', 'admin', 'Operator']]) {
       await command(php, [...phpFlags, 'scripts/account.php', 'set', username, role, label], env, password + '\n');
     }
@@ -68,6 +69,10 @@ try {
     }
     if (process.env.EDUQUEST_TEST_EDITOR_USER) {
       await command(php, [...phpFlags, 'tests/grant-runtime.php', 'editor'], env);
+    }
+    if (publicDemo) {
+      await command(php, [...phpFlags, 'tests/public-demo-db.php'], env);
+      webEnv.EDUQUEST_PUBLIC_DEMO = '1';
     }
     webEnv.EDUQUEST_ADMIN_DB_DSN = dsn;
     webEnv.EDUQUEST_ADMIN_DB_USER = process.env.EDUQUEST_TEST_EDITOR_USER ?? process.env.EDUQUEST_DB_USER ?? 'eduquest';
@@ -140,6 +145,7 @@ try {
       if (!ready) await delay(100);
     }
     if (!ready) throw new Error('PHP did not start on ' + url);
+    if (publicDemo) await command(process.execPath, ['tests/public-demo.mjs'], testEnv);
     if (enabled('http')) await command(process.execPath, ['tests/http.mjs'], testEnv);
     if (enabled('browser')) await command(process.execPath, ['tests/browser.mjs'], testEnv);
     if (enabled('crud')) await command(process.execPath, ['tests/admin-crud.mjs'], testEnv);

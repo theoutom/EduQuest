@@ -42,7 +42,7 @@ $tutorPosition = $position;
             </fieldset>
             <div class="question-tools">
                 <button class="button button-quiet" type="button" data-clear hidden>Hapus pilihan</button>
-                <?php if ($attempt['tutor_enabled']): ?>
+                <?php if (!publicDemo() && $attempt['tutor_enabled']): ?>
                     <button class="button button-quiet" data-tutor-open type="submit" name="target" value="tutor">Tutor latihan</button>
                 <?php endif; ?>
                 <p class="save-status" data-save-status role="status"><?= $current['selected_id'] !== null || $current['doubtful'] ? 'Tersimpan' : '' ?></p>
@@ -87,7 +87,7 @@ $tutorPosition = $position;
     </aside>
 </div>
 
-<?php if ($attempt['tutor_enabled']): require __DIR__ . '/tutor-panel.php'; endif; ?>
+<?php if (!publicDemo() && $attempt['tutor_enabled']): require __DIR__ . '/tutor-panel.php'; endif; ?>
 <dialog class="dialog" data-confirm aria-labelledby="dialog-title">
     <div class="dialog-content">
         <h2 id="dialog-title">Kumpulkan kuis?</h2>

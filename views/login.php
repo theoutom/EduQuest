@@ -7,6 +7,14 @@
         </div>
     </section>
     <section class="panel login-form">
+        <?php if (publicDemo()): ?>
+        <h1>Demo EduQuest</h1>
+        <p class="muted">Coba kuis dan lihat pembahasannya. Sesi demo berlangsung hingga satu jam.</p>
+        <form method="post" class="admin-form" action="/masuk">
+            <?php csrfField($csrf); ?>
+            <button class="button button-primary" type="submit">Coba demo</button>
+        </form>
+        <?php else: ?>
         <h1><?= demoPreview() ? 'Masuk ke Demo EduQuest' : 'Masuk ke EduQuest' ?></h1>
         <p class="muted"><?= demoPreview()
             ? 'Gunakan akun demo dari pengelola untuk mencoba fitur dengan data contoh.'
@@ -22,5 +30,6 @@
             </label>
             <button class="button button-primary" type="submit">Masuk</button>
         </form>
+        <?php endif; ?>
     </section>
 </div>

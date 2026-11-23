@@ -38,7 +38,7 @@
     <aside class="panel quiz-facts" aria-labelledby="facts-heading">
         <h2 id="facts-heading">Ringkasan kuis</h2>
         <dl class="facts">
-            <div><dt>Mode</dt><dd><?= $item['tutor_enabled'] ? 'Latihan dengan Tutor' : 'Mandiri' ?></dd></div>
+            <div><dt>Mode</dt><dd><?= !publicDemo() && $item['tutor_enabled'] ? 'Latihan dengan Tutor' : 'Mandiri' ?></dd></div>
             <div><dt>Jumlah soal</dt><dd><?= h($item['total']) ?></dd></div>
             <div><dt>Durasi</dt><dd><?= h(formatDuration($item['duration_seconds'])) ?></dd></div>
             <div><dt>Nilai lulus</dt><dd><?= h($item['passing_score']) ?>/100</dd></div>

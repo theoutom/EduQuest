@@ -4,7 +4,7 @@
 </header>
 <?php if ($saved): ?><p class="notice admin-feedback" role="status">Profil tersimpan.</p><?php endif; ?>
 <div class="admin-grid">
-<section class="panel" aria-labelledby="academic-profile">
+<?php if (!publicDemo()): ?><section class="panel" aria-labelledby="academic-profile">
     <h2 id="academic-profile">Profil akademik</h2>
     <p class="muted">Hanya tampil di akunmu. Semua isian opsional.</p>
     <form class="admin-form" method="post" action="/profil">
@@ -20,7 +20,7 @@
         <?php endforeach; ?>
         <button class="button button-primary" type="submit">Simpan profil</button>
     </form>
-</section>
+</section><?php endif; ?>
 <div class="admin-stack">
 <section class="panel dashboard-stats" aria-labelledby="profile-progress">
     <h2 id="profile-progress">Progres belajar</h2>

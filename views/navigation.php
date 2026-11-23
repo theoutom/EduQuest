@@ -19,6 +19,7 @@
         '/mentor' => ['Cari Mentor', 'mentor'],
         '/profil' => ['Profil', 'profile'],
     ]) as $href => [$label, $icon]): ?>
+        <?php if (publicDemo() && in_array($href, ['/komunitas', '/mentor'], true)) continue; ?>
         <a href="<?= h($href) ?>" <?= navCurrent($path, $href) ? 'aria-current="page"' : '' ?>>
             <span class="nav-icon icon-<?= h($icon) ?>" aria-hidden="true"></span><?= h($label) ?>
         </a>
