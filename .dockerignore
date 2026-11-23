@@ -2,6 +2,8 @@
 !Dockerfile.vercel
 !vercel.json
 !Caddyfile
+!deploy/
+!deploy/supabase-root-2021.crt
 !package.json
 !package-lock.json
 !app/

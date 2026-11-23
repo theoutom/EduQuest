@@ -13,6 +13,7 @@ RUN install-php-extensions pdo_pgsql mbstring curl \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
     && php -r 'exit(extension_loaded("pdo_pgsql") && extension_loaded("mbstring") && extension_loaded("curl") && defined("PASSWORD_ARGON2ID") && in_array("argon2id", password_algos(), true) ? 0 : 1);'
 COPY Caddyfile /etc/caddy/Caddyfile
+COPY deploy/supabase-root-2021.crt /app/certs/supabase-root-2021.crt
 COPY app app/
 COPY views views/
 COPY public/index.php public/index.php

@@ -105,3 +105,5 @@ Branch `demo` menerbitkan Vercel Preview dan `main` adalah branch Production. Te
 Deploy otomatis dari `main` ditahan sampai database Production tersedia. Setelah koneksi Production dan akses admin terverifikasi, hapus aturan `git.deploymentEnabled.main` dari `vercel.json` ketika menyiapkan rilis pertama.
 
 Gunakan proyek PostgreSQL Supabase terpisah untuk demo. Jalankan migrasi dengan role pemilik skema, siapkan role web dan editor terbatas, lalu buat akun uji baru melalui `scripts/account.php`. Masukkan koneksi web dan editor sebagai variabel sensitif khusus Preview branch `demo`. Gunakan koneksi berbeda untuk Production. Uji login siswa, mulai dan kumpulkan kuis, buka pembahasan, lalu verifikasi akses admin dengan akun uji terpisah.
+
+Untuk pooler Supabase pada container demo, gunakan `sslmode=verify-full` dan `sslrootcert=/app/certs/supabase-root-2021.crt` di DSN. Sertifikat tersebut adalah CA publik Supabase. [Postgres SSL Enforcement](https://supabase.com/docs/guides/platform/ssl-enforcement)
