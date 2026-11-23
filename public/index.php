@@ -34,7 +34,14 @@ try {
     $code = (string) $error->getCode();
     error_log('EduQuest request failed: ' . $error::class . (preg_match('/^[A-Z0-9]{5}$/D', $code) ? " ($code)" : ''));
     $problem = new QuizProblem(503, 'EduQuest belum dapat memproses permintaan. Coba lagi sebentar.');
-    if (isset($app)) {
+    if (demoPreview() && $_SERVER['REQUEST_METHOD'] === 'GET'
+        && in_array(explode('?', $_SERVER['REQUEST_URI'], 2)[0], ['/', '/masuk'], true)) {
+        http_response_code(503);
+        $title = 'Demo EduQuest';
+        $view = 'demo-unavailable';
+        $student = null;
+        require "$root/views/layout.php";
+    } elseif (isset($app)) {
         $app->error($problem);
     } else {
         http_response_code($problem->status);

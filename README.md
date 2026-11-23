@@ -97,3 +97,9 @@ Untuk menguji seluruh alur dengan izin terbatas, atur `EDUQUEST_TEST_RUNTIME_USE
 - Vercel memakai preset Container di `vercel.json`. `Dockerfile.vercel` membangun Tailwind dan menjalankan PHP 8.4 dengan FrankenPHP, PDO PostgreSQL, dan Argon2id. Caddy hanya melayani direktori `public/`. [PHP di Vercel](https://vercel.com/kb/guide/deploy-php-on-vercel-with-docker)
 - Untuk preview, tautkan folder ke proyek EduQuest lalu gunakan `vercel deploy --target preview`. Simpan variabel koneksi role web dan editor di lingkungan **Preview** Vercel. Jalankan migrasi, refresh grant, dan pembuatan akun uji dari koneksi pemilik skema di luar Vercel. Uji login, kuis, pembahasan, serta akses admin di Preview sebelum promosi.
 - Skema aplikasi PostgreSQL bisa digunakan di Supabase. Gunakan TLS dan uji koneksi PDO. Bila memakai transaction pooler Supabase, `EDUQUEST_DB_EMULATE_PREPARES=1` mengaktifkan emulasi prepared statement sambil mempertahankan parameter binding. Jalankan migrasi dengan koneksi langsung atau session pooler sesuai akses jaringan. [Koneksi Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres)
+
+### Alur demo
+
+Branch `demo` menerbitkan Vercel Preview dan `main` adalah branch Production. Tetapkan `EDUQUEST_DEMO_MODE=1` khusus branch `demo` di Preview. Halaman demo menandai perubahan lingkungan dan menampilkan status jika database belum tersedia.
+
+Gunakan proyek PostgreSQL Supabase terpisah untuk demo. Jalankan migrasi dengan role pemilik skema, siapkan role web dan editor terbatas, lalu buat akun uji baru melalui `scripts/account.php`. Masukkan koneksi web dan editor sebagai variabel sensitif khusus Preview branch `demo`. Gunakan koneksi berbeda untuk Production. Uji login siswa, mulai dan kumpulkan kuis, buka pembahasan, lalu verifikasi akses admin dengan akun uji terpisah.

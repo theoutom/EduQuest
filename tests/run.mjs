@@ -50,6 +50,7 @@ let modelFixture;
 let modelViolation = false;
 let log = '';
 try {
+  if (enabled('demo')) await command(process.execPath, ['tests/demo-landing.mjs'], env);
   if (enabled('tutor')) await command(php, [...phpFlags, 'tests/tutor-gateway.php'], env);
   await command(php, [...phpFlags, 'scripts/migrate.php'], env);
   if (enabled('quiz')) await command(php, [...phpFlags, 'tests/quiz.php'], env);
