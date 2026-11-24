@@ -25,3 +25,9 @@ GRANT UPDATE (name, category, bio, rate, verified, enabled) ON eduquest.mentors 
 GRANT INSERT (mentor_id, starts_at, ends_at), UPDATE (enabled) ON eduquest.mentor_slots TO __RUNTIME_ROLE__;
 GRANT UPDATE (status, message, meeting_url) ON eduquest.mentor_bookings TO __RUNTIME_ROLE__;
 GRANT USAGE ON SEQUENCE eduquest.mentors_id_seq, eduquest.mentor_slots_id_seq TO __RUNTIME_ROLE__;
+GRANT SELECT, INSERT, DELETE ON eduquest.daily_challenges TO __RUNTIME_ROLE__;
+GRANT UPDATE (quiz_id) ON eduquest.daily_challenges TO __RUNTIME_ROLE__;
+GRANT SELECT, DELETE ON eduquest.exam_schedule TO __RUNTIME_ROLE__;
+GRANT INSERT (title, location, note, starts_at, ends_at),
+    UPDATE (title, location, note, starts_at, ends_at, published) ON eduquest.exam_schedule TO __RUNTIME_ROLE__;
+GRANT USAGE ON SEQUENCE eduquest.exam_schedule_id_seq TO __RUNTIME_ROLE__;

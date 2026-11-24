@@ -8,6 +8,8 @@
     <a class="button button-quiet" href="/admin/siswa">Kelola akun siswa</a>
     <a class="button button-quiet" href="/admin/komunitas">Moderasi komunitas</a>
     <a class="button button-quiet" href="/admin/mentor">Kelola mentor</a>
+    <a class="button button-quiet" href="/admin/tantangan">Jadwalkan tantangan</a>
+    <a class="button button-quiet" href="/admin/jadwal">Kelola jadwal ujian</a>
     <a class="button button-quiet" href="/admin/riwayat">Lihat riwayat</a>
 </nav>
 <div class="detail-grid">

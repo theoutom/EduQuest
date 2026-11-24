@@ -277,6 +277,52 @@ final class QuizService
             SQL, [$student])->fetchAll();
     }
 
+    public function streak(int $student): int
+    {
+        return (int) $this->query(<<<'SQL'
+            WITH days AS (
+                SELECT DISTINCT (finished_at AT TIME ZONE 'Asia/Jakarta')::date AS day
+                FROM eduquest.attempts
+                WHERE student_id = ? AND finished_at <= statement_timestamp()
+            ), consecutive AS (
+                SELECT day + (row_number() OVER (ORDER BY day DESC) - 1)::int AS anchor
+                FROM days
+            )
+            SELECT count(*) FROM consecutive WHERE anchor = (
+                SELECT max(day) FROM days WHERE day >= (statement_timestamp() AT TIME ZONE 'Asia/Jakarta')::date - 1
+            )
+            SQL, [$student])->fetchColumn();
+    }
+
+    public function dailyChallenge(int $student, array $catalog): ?array
+    {
+        $selection = $this->query(<<<'SQL'
+            SELECT c.quiz_id, result.id AS completed_id
+            FROM eduquest.daily_challenges c
+            LEFT JOIN LATERAL (
+                SELECT id FROM eduquest.attempts WHERE student_id = ? AND quiz_id = c.quiz_id
+                  AND finished_at >= (c.challenge_date::timestamp AT TIME ZONE 'Asia/Jakarta')
+                  AND finished_at <= statement_timestamp()
+                ORDER BY finished_at DESC, id DESC LIMIT 1
+            ) result ON true
+            WHERE c.challenge_date = (statement_timestamp() AT TIME ZONE 'Asia/Jakarta')::date
+            SQL, [$student])->fetch();
+        if (!$selection) {
+            return null;
+        }
+        $quiz = array_column($catalog, null, 'id')[$selection['quiz_id']] ?? null;
+        return $quiz && $quiz['duration_seconds'] <= 300 ? $quiz + $selection : null;
+    }
+
+    public function upcomingExams(int $limit, int $offset = 0): array
+    {
+        return $this->query(<<<'SQL'
+            SELECT title, location, note, starts_at, ends_at, starts_at <= statement_timestamp() AS ongoing
+            FROM eduquest.published_exam_schedule WHERE ends_at > statement_timestamp()
+            ORDER BY starts_at, id LIMIT ? OFFSET ?
+            SQL, [$limit, $offset])->fetchAll();
+    }
+
     private function lockedAttempt(int $student, int $id): array
     {
         $attempt = $this->query(<<<'SQL'

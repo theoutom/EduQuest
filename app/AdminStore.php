@@ -48,6 +48,123 @@ final class AdminStore
             SQL)->fetchAll();
     }
 
+    public function dailySchedule(): array
+    {
+        $quizzes = $this->query(<<<'SQL'
+            SELECT q.id, q.title, version.duration_seconds FROM eduquest.quizzes q
+            JOIN LATERAL (
+                SELECT duration_seconds FROM eduquest.quiz_versions WHERE quiz_id = q.id AND published_at IS NOT NULL
+                ORDER BY version DESC LIMIT 1
+            ) version ON true
+            WHERE q.archived_at IS NULL AND version.duration_seconds <= 300
+            ORDER BY q.title
+            SQL)->fetchAll();
+        $schedule = $this->query(<<<'SQL'
+            SELECT c.challenge_date, q.title FROM eduquest.daily_challenges c JOIN eduquest.quizzes q ON q.id = c.quiz_id
+            WHERE c.challenge_date >= (statement_timestamp() AT TIME ZONE 'Asia/Jakarta')::date ORDER BY c.challenge_date
+            SQL)->fetchAll();
+        return compact('quizzes', 'schedule');
+    }
+
+    public function changeChallenge(string $action, string $day, ?int $quiz): void
+    {
+        $today = new DateTimeImmutable('today', new DateTimeZone('Asia/Jakarta'));
+        if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D', $day, $parts)
+            || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])
+            || $day < $today->format('Y-m-d') || $day > $today->modify('+1 year')->format('Y-m-d')
+            || !in_array($action, ['save', 'remove'], true)) {
+            throw new QuizProblem(422, 'Pilih tindakan dan tanggal WIB dalam satu tahun ke depan.');
+        }
+        $this->mutate('daily_challenge_' . $action, $day, function () use ($action, $day, $quiz): void {
+            if ($action === 'remove') {
+                $this->query('DELETE FROM eduquest.daily_challenges WHERE challenge_date = ?', [$day]);
+                return;
+            }
+            $saved = $this->query(<<<'SQL'
+                INSERT INTO eduquest.daily_challenges(challenge_date, quiz_id)
+                SELECT CAST(? AS date), q.id FROM eduquest.quizzes q JOIN LATERAL (
+                    SELECT duration_seconds FROM eduquest.quiz_versions WHERE quiz_id = q.id AND published_at IS NOT NULL
+                    ORDER BY version DESC LIMIT 1
+                ) v ON true
+                WHERE q.id = ? AND q.archived_at IS NULL AND v.duration_seconds <= 300
+                ON CONFLICT (challenge_date) DO UPDATE SET quiz_id = excluded.quiz_id
+                SQL, [$day, $quiz])->rowCount();
+            if ($saved === 0) {
+                throw new QuizProblem(422, 'Pilih kuis terbit dengan durasi maksimal lima menit.');
+            }
+        });
+    }
+
+    public function examSchedule(): array
+    {
+        return $this->query('SELECT * FROM eduquest.exam_schedule ORDER BY starts_at DESC, id DESC')->fetchAll();
+    }
+
+    public function exam(int $id): array
+    {
+        return $this->one('SELECT * FROM eduquest.exam_schedule WHERE id = ?', [$id], 'Jadwal ujian');
+    }
+
+    public function createExam(array $input): int
+    {
+        $fields = $this->examFields($input);
+        return $this->mutate('create_exam', $fields[0], fn (): int => (int) $this->query(<<<'SQL'
+            INSERT INTO eduquest.exam_schedule(title, location, note, starts_at, ends_at)
+            VALUES (?, ?, ?, ?, ?) RETURNING id
+            SQL, $fields)->fetchColumn());
+    }
+
+    public function changeExam(int $id, string $action, array $input): void
+    {
+        $this->mutate($action . '_exam', (string) $id, function () use ($id, $action, $input): void {
+            $current = $this->one('SELECT published FROM eduquest.exam_schedule WHERE id = ? FOR UPDATE', [$id], 'Jadwal ujian');
+            switch ($action) {
+                case 'update':
+                    $this->query(<<<'SQL'
+                        UPDATE eduquest.exam_schedule SET title = ?, location = ?, note = ?, starts_at = ?, ends_at = ? WHERE id = ?
+                        SQL, [...$this->examFields($input), $id]);
+                    break;
+                case 'publish':
+                    if ($this->query('UPDATE eduquest.exam_schedule SET published = true WHERE id = ? AND ends_at > clock_timestamp()', [$id])->rowCount() === 0) {
+                        throw new QuizProblem(409, 'Jadwal ujian sudah berakhir.');
+                    }
+                    break;
+                case 'withdraw':
+                    $this->query('UPDATE eduquest.exam_schedule SET published = false WHERE id = ?', [$id]);
+                    break;
+                case 'delete':
+                    if ($current['published']) {
+                        throw new QuizProblem(409, 'Tarik jadwal dari siswa sebelum menghapusnya.');
+                    }
+                    $this->confirmed($input, fn () => $this->query('DELETE FROM eduquest.exam_schedule WHERE id = ?', [$id]));
+                    break;
+                default:
+                    throw new QuizProblem(422, 'Tindakan jadwal tidak dikenali.');
+            }
+        });
+    }
+
+    private function examFields(array $input): array
+    {
+        $timezone = new DateTimeZone('Asia/Jakarta');
+        $times = [];
+        foreach (['starts', 'ends'] as $key) {
+            $raw = $this->field($input, $key);
+            $date = preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/D', $raw)
+                ? DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $raw, $timezone)
+                : false;
+            if (!$date || $date->format('Y-m-d\TH:i') !== $raw || $date->format('Y') === '0000') {
+                throw new QuizProblem(422, 'Isi waktu mulai dan selesai yang valid dalam WIB.');
+            }
+            $times[] = $date;
+        }
+        if ($times[1] <= $times[0]) {
+            throw new QuizProblem(422, 'Waktu selesai harus setelah waktu mulai.');
+        }
+        return [$this->text($input, 'title', 120), $this->text($input, 'location', 120, false),
+            $this->text($input, 'note', 600, false), $times[0]->format(DATE_ATOM), $times[1]->format(DATE_ATOM)];
+    }
+
     public function quiz(int $id): array
     {
         $quiz = $this->one('SELECT * FROM eduquest.quizzes WHERE id = ?', [$id], 'Kuis');

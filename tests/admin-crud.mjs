@@ -39,6 +39,16 @@ redirect(await administrator.visit(quiz, { action: 'question-delete', draft_id: 
 assert.doesNotMatch((await administrator.visit(quiz)).text, /Soal sementara untuk dihapus/);
 redirect(await administrator.visit(quiz, { action: 'publish', draft_id: firstDraft }), /^\/admin\/kuis\/\d+/);
 const opened = redirect(await learner.visit('/kuis/kuis-admin/mulai', {}), /^\/sesi\/\d+$/);
+const daily = '/admin/tantangan';
+const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Jakarta', dateStyle: 'short' }).format(new Date());
+assert.equal((await learner.visit(daily)).response.status, 403);
+assert.equal((await administrator.visit(daily)).response.status, 200);
+assert.equal((await administrator.visit(daily, { action: 'save', day: today, quiz_id: '3' })).response.status, 422);
+const publication = { action: 'save', day: today, quiz_id: quiz.split('/').at(-1) };
+assert.equal((await administrator.visit(daily, { ...publication, csrf: 'incorrect' })).response.status, 403);
+redirect(await administrator.visit(daily, publication), /^\/admin\/tantangan/);
+const challenge = async () => (await learner.visit('/')).text.match(/<section[^>]+aria-labelledby="daily-title">[\s\S]*?<\/section>/)?.[0] ?? '';
+assert.match(await challenge(), new RegExp('href="' + opened + '"'));
 const exercise = await learner.visit(opened);
 assert.match(exercise.text, /Berapa nilai dua tambah dua/);
 assert.match(exercise.text, /<code>  nilai = 2 \+ 2\n<\/code>/);
@@ -48,6 +58,31 @@ const option = exercise.text.match(/name="option" value="(\d+)"/)[1];
 redirect(await learner.visit(opened + '/jawaban', { question, option, target: '1' }), /soal=1$/);
 const result = redirect(await learner.visit(opened + '/kumpulkan', {}), /^\/hasil\//);
 assert.match((await learner.visit(result)).text, /Dua ditambah dua sama dengan empat/);
+assert.match(await challenge(), /Selesai hari ini/);
+redirect(await administrator.visit(daily, { action: 'remove', day: today }), /^\/admin\/tantangan/);
+assert.doesNotMatch(await challenge(), /Kuis admin/);
+const exams = '/admin/jadwal';
+const jakartaTime = time => new Date(time + 7 * 3600000).toISOString().slice(0, 16);
+const exam = {
+  action: 'create', title: 'Ujian Basis Data Fixture', location: 'Lab 2', note: 'Bawa kartu peserta.',
+  starts: jakartaTime(Date.now() + 86400000), ends: jakartaTime(Date.now() + 90000000),
+};
+assert.equal((await learner.visit(exams)).response.status, 403);
+assert.equal((await administrator.visit(exams)).response.status, 200);
+assert.equal((await administrator.visit(exams, { ...exam, ends: exam.starts })).response.status, 422);
+assert.equal((await administrator.visit(exams, { ...exam, csrf: 'invalid' })).response.status, 403);
+const editExam = redirect(await administrator.visit(exams, exam), /^\/admin\/jadwal\/\d+$/);
+assert.ok(!(await learner.visit('/jadwal')).text.includes(exam.title), 'Draft must stay private');
+redirect(await administrator.visit(editExam, { action: 'publish' }), /^\/admin\/jadwal\/\d+$/);
+assert.ok((await learner.visit('/jadwal')).text.includes(exam.title));
+assert.ok((await learner.visit('/')).text.includes(exam.title));
+assert.equal((await administrator.visit(editExam, { action: 'delete', confirm: '1' })).response.status, 409);
+redirect(await administrator.visit(editExam, { ...exam, action: 'update', location: 'Lab 3' }), /^\/admin\/jadwal\/\d+$/);
+assert.ok((await learner.visit('/jadwal')).text.includes('Lab 3'));
+redirect(await administrator.visit(editExam, { action: 'withdraw' }), /^\/admin\/jadwal\/\d+$/);
+assert.ok(!(await learner.visit('/jadwal')).text.includes(exam.title));
+redirect(await administrator.visit(editExam, { action: 'delete', confirm: '1' }), /^\/admin\/jadwal$/);
+assert.equal((await administrator.visit(editExam)).response.status, 404);
 const stillV1 = redirect(await learner.visit('/kuis/kuis-admin/mulai', {}), /^\/sesi\/\d+$/);
 
 redirect(await administrator.visit(quiz, { action: 'draft' }), /^\/admin\/kuis\/\d+/);

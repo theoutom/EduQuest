@@ -98,6 +98,9 @@ final class Http
             $this->page('dashboard', 'Dashboard', compact('items', 'featured') + [
                 'ongoing' => $this->quiz->activeSessions($student, (int) ($featured['active_id'] ?? 0)),
                 'progress' => $this->quiz->progress($student),
+                'streak' => $this->quiz->streak($student),
+                'challenge' => $this->quiz->dailyChallenge($student, $items),
+                'exams' => publicDemo() ? [] : $this->quiz->upcomingExams(3),
                 'activity' => $this->quiz->weeklyActivity($student),
                 'mentor' => publicDemo() ? null : (new Mentor($this->db))->nextSession($student),
             ]);
@@ -160,6 +163,14 @@ final class Http
             $filter = $print ? 'semua' : $this->input($_GET, 'status', 'semua');
             $this->page('review', 'Hasil & Pembahasan', compact('review', 'print') + [
                 'filter' => isset(self::FILTERS[$filter]) ? $filter : 'semua', 'labels' => self::FILTERS,
+            ]);
+            return;
+        }
+        if ($this->method === 'GET' && $this->path === '/jadwal') {
+            $number = $this->communityPage('hal');
+            $rows = $this->quiz->upcomingExams(21, ($number - 1) * 20);
+            $this->page('exam-schedule', 'Jadwal Ujian', compact('number') + [
+                'exams' => array_slice($rows, 0, 20), 'hasNext' => count($rows) > 20,
             ]);
             return;
         }
@@ -385,12 +396,12 @@ final class Http
 
     private function adminArea(int $actor): void
     {
-        if (!preg_match('~^/admin/(topik|kuis|siswa|riwayat)(?:/(\d{1,10}))?$~D', $this->path, $match)) {
+        if (!preg_match('~^/admin/(topik|kuis|siswa|riwayat|tantangan|jadwal)(?:/(\d{1,10}))?$~D', $this->path, $match)) {
             throw new QuizProblem(404, 'Halaman administrasi tidak ditemukan.');
         }
         $section = $match[1];
         $id = isset($match[2]) ? $this->positive($match[2], 404) : null;
-        if ($id !== null && in_array($section, ['topik', 'riwayat'], true)) {
+        if ($id !== null && in_array($section, ['topik', 'riwayat', 'tantangan'], true)) {
             throw new QuizProblem(404, 'Halaman administrasi tidak ditemukan.');
         }
         if ($section === 'riwayat' && $this->method !== 'GET') {
@@ -420,6 +431,14 @@ final class Http
         $common = compact('message', 'submitted', 'saved');
         if ($section === 'topik') {
             $this->page('admin-topics', 'Kelola Topik', $common + ['items' => $store->topics()]);
+        } elseif ($section === 'tantangan') {
+            $this->page('admin-daily', 'Tantangan Harian', $common + $store->dailySchedule());
+        } elseif ($section === 'jadwal') {
+            if ($id === null) {
+                $this->page('admin-exams', 'Kelola Jadwal Ujian', $common + ['items' => $store->examSchedule()]);
+            } else {
+                $this->page('admin-exam', 'Editor Jadwal Ujian', $common + ['item' => $store->exam($id)]);
+            }
         } elseif ($section === 'kuis') {
             $data = ['topics' => $store->topics(), 'levels' => AdminStore::LEVELS];
             if ($id === null) {
@@ -671,6 +690,21 @@ final class Http
 
     private function adminMutation(AdminStore $store, string $section, ?int $id, string $action): string
     {
+        if ($section === 'jadwal') {
+            if ($id === null) {
+                if ($action !== 'create') {
+                    throw new QuizProblem(422, 'Pilih satu jadwal untuk dikelola.');
+                }
+                return '/admin/jadwal/' . $store->createExam($_POST);
+            }
+            $store->changeExam($id, $action, $_POST);
+            return $action === 'delete' ? '/admin/jadwal' : "/admin/jadwal/$id";
+        }
+        if ($section === 'tantangan') {
+            $quiz = $action === 'save' ? $this->positive($this->input($_POST, 'quiz_id')) : null;
+            $store->changeChallenge($action, $this->input($_POST, 'day'), $quiz);
+            return '/admin/tantangan';
+        }
         if ($section === 'topik') {
             $store->changeTopic($action, $_POST);
             return '/admin/topik';

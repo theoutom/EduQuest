@@ -15,11 +15,12 @@
     ] : [
         '/' => ['Dashboard', 'home'],
         '/kuis' => ['Daftar Kuis', 'quiz'],
+        '/jadwal' => ['Jadwal Ujian', 'quiz'],
         '/komunitas' => ['Bank Soal Komunitas', 'community'],
         '/mentor' => ['Cari Mentor', 'mentor'],
         '/profil' => ['Profil', 'profile'],
     ]) as $href => [$label, $icon]): ?>
-        <?php if (publicDemo() && in_array($href, ['/komunitas', '/mentor'], true)) continue; ?>
+        <?php if (publicDemo() && in_array($href, ['/jadwal', '/komunitas', '/mentor'], true)) continue; ?>
         <a href="<?= h($href) ?>" <?= navCurrent($path, $href) ? 'aria-current="page"' : '' ?>>
             <span class="nav-icon icon-<?= h($icon) ?>" aria-hidden="true"></span><?= h($label) ?>
         </a>

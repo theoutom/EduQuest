@@ -42,6 +42,7 @@ try {
   await Promise.all([page.waitForNavigation(), page.keyboard.press('Enter')]);
   assert.match(await page.title(), /Dashboard/);
   assert.equal(await page.$$eval('.activity-list time', days => days.length), 7);
+  assert.equal(await page.$eval('#daily-title', node => node.textContent), 'Tantangan harian');
   await snapshot('dashboard-desktop');
 
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });

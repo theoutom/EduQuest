@@ -40,10 +40,38 @@
             <div><dt>Kuis selesai</dt><dd><?= h($progress['completed']) ?></dd></div>
             <div><dt>Rata-rata nilai</dt><dd><?= $progress['average'] === null ? '—' : h($progress['average']) . '/100' ?></dd></div>
             <div><dt>Durasi kuis selesai</dt><dd><?= h($duration) ?></dd></div>
+            <div><dt>Streak belajar</dt><dd><?= h($streak) ?> hari</dd></div>
         </dl>
         <a class="button button-quiet" href="/profil">Lihat riwayat</a>
     </section>
 </div>
+<section class="panel dashboard-activity" aria-labelledby="daily-title">
+    <h2 id="daily-title">Tantangan harian</h2>
+    <?php if ($challenge === null): ?>
+        <p class="muted">Belum ada tantangan untuk hari ini.</p>
+    <?php else: ?>
+        <p><?= h($challenge['title']) ?> · <?= h(formatDuration($challenge['duration_seconds'])) ?></p>
+        <?php if ($challenge['completed_id'] !== null): ?>
+            <p><strong>Selesai hari ini</strong></p>
+            <a class="button button-quiet tutor-trigger" href="/hasil/<?= h($challenge['completed_id']) ?>">Lihat hasil</a>
+        <?php elseif ($challenge['active_id'] !== null): ?>
+            <a class="button button-primary tutor-trigger" href="/sesi/<?= h($challenge['active_id']) ?>">Lanjutkan tantangan</a>
+        <?php elseif ($challenge['used'] >= $challenge['attempt_limit']): ?>
+            <p class="muted">Jatah percobaan kuis ini sudah habis.</p>
+        <?php else: ?>
+            <a class="button button-quiet tutor-trigger" href="<?= h(quizLink($challenge)) ?>">Lihat tantangan</a>
+        <?php endif; ?>
+    <?php endif; ?>
+</section>
+<?php if (!publicDemo()): ?>
+<section class="panel dashboard-activity" aria-labelledby="exams-title">
+    <header class="section-heading">
+        <h2 id="exams-title">Jadwal ujian</h2>
+        <a class="button button-quiet" href="/jadwal">Lihat semua jadwal</a>
+    </header>
+    <?php require __DIR__ . '/exam-list.php'; ?>
+</section>
+<?php endif; ?>
 <div class="dashboard-row dashboard-activity">
     <section class="panel" aria-labelledby="activity-title">
         <h2 id="activity-title">Aktivitas 7 hari</h2>

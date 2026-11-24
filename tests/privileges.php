@@ -11,6 +11,8 @@ $checks = $db->query(<<<'SQL'
            NOT has_schema_privilege(current_user, 'eduquest_meta', 'USAGE') AS cannot_run_migrations,
            NOT has_column_privilege(current_user, 'eduquest.students', 'role', 'UPDATE') AS cannot_change_roles,
            NOT has_column_privilege(current_user, 'eduquest.students', 'password_hash', 'UPDATE') AS cannot_change_credentials,
+           NOT has_table_privilege(current_user, 'eduquest.exam_schedule', 'SELECT') AS cannot_read_exam_drafts,
+           has_table_privilege(current_user, 'eduquest.published_exam_schedule', 'SELECT') AS can_read_published_exams,
            NOT has_column_privilege(current_user, 'eduquest.student_profiles', 'student_id', 'UPDATE') AS cannot_reassign_student_profiles,
            has_column_privilege(current_user, 'eduquest.student_profiles', 'school', 'UPDATE') AS can_save_academic_profile,
            NOT has_table_privilege(current_user, 'eduquest.options', 'INSERT,UPDATE,DELETE') AS cannot_change_keys,

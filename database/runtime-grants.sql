@@ -34,3 +34,5 @@ GRANT USAGE ON SEQUENCE eduquest.mentor_bookings_id_seq TO __RUNTIME_ROLE__;
 GRANT SELECT, INSERT, DELETE ON eduquest.quiz_bookmarks TO __RUNTIME_ROLE__;
 GRANT SELECT, INSERT ON eduquest.student_profiles TO __RUNTIME_ROLE__;
 GRANT UPDATE (school, class_name, program, interests, bio) ON eduquest.student_profiles TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.daily_challenges TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.published_exam_schedule TO __RUNTIME_ROLE__;

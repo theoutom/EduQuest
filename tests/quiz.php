@@ -126,3 +126,20 @@ try {
     $immutable = $exception->getCode() === '23514';
 }
 check($immutable, 'PostgreSQL rejects direct edits to published questions');
+
+$streakStudent = (int) $db->query(<<<'SQL'
+    INSERT INTO eduquest.students (id, username, name, enabled) OVERRIDING SYSTEM VALUE
+    VALUES (-1, 'streak-fixture', 'Fixture', false) RETURNING id
+    SQL)->fetchColumn();
+check($quiz->streak($streakStudent) === 0, 'Students start with no streak');
+$dates = $db->prepare(<<<'SQL'
+    INSERT INTO eduquest.attempts (student_id, quiz_id, version_id, started_at, deadline, finished_at, score)
+    SELECT ?, v.quiz_id, v.id, series.completed - interval '1 minute', series.completed, series.completed, 100
+    FROM (SELECT id, quiz_id FROM eduquest.quiz_versions WHERE published_at IS NOT NULL ORDER BY id LIMIT 1) v
+    CROSS JOIN LATERAL (
+        SELECT ((statement_timestamp() AT TIME ZONE 'Asia/Jakarta')::date - n + time '00:05') AT TIME ZONE 'Asia/Jakarta' AS completed
+        FROM (VALUES (1), (1), (2), (4)) days(n)
+    ) series
+    SQL);
+$dates->execute([$streakStudent]);
+check($quiz->streak($streakStudent) === 2, 'Yesterday keeps the WIB streak alive and duplicate attempts count once');

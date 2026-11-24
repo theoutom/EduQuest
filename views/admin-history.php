@@ -39,6 +39,9 @@
             'mentor_add-slot' => 'Tambah jadwal mentor', 'mentor_close-slot' => 'Tutup jadwal mentor',
             'mentor_open-slot' => 'Buka jadwal mentor', 'mentor_booking_confirm' => 'Konfirmasi sesi mentor',
             'mentor_booking_reject' => 'Tolak sesi mentor', 'mentor_booking_cancel' => 'Batalkan sesi mentor',
+            'daily_challenge_save' => 'Jadwalkan tantangan harian', 'daily_challenge_remove' => 'Cabut tantangan harian',
+            'create_exam' => 'Buat jadwal ujian', 'update_exam' => 'Ubah jadwal ujian', 'publish_exam' => 'Terbitkan jadwal ujian',
+            'withdraw_exam' => 'Tarik jadwal ujian', 'delete_exam' => 'Hapus jadwal ujian',
         ]; ?>
         <div class="table-scroll" tabindex="0" role="region" aria-labelledby="change-history">
             <table class="admin-table">
