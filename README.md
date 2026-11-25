@@ -2,6 +2,8 @@
 
 EduQuest adalah aplikasi latihan untuk siswa SMA dan SMK. Alpha mencakup kuis, pembahasan, profil dan riwayat siswa, bank soal komunitas, Tutor latihan, pemesanan sesi mentor, serta pengelolaan materi dan akun.
 
+[Roadmap EduQuest](docs/roadmap.md) memetakan sembilan layar dari PRD dan desain, cakupan MVP pilot, serta urutan pengembangan setelah demo.
+
 ## Menjalankan secara lokal
 
 Siapkan PHP 8.2 atau lebih baru dengan `pdo_pgsql`, `mbstring`, dan dukungan Argon2id, PostgreSQL 14 atau lebih baru, serta Node.js 22.12 atau lebih baru. Untuk pengujian browser, siapkan Chrome, Chromium, atau Edge. PostgreSQL perlu menerima koneksi dari PHP.
@@ -51,6 +53,10 @@ $ext = Join-Path (Split-Path $php) 'ext'
 
 Dashboard menampilkan jumlah kuis unik yang sudah diselesaikan, rata-rata nilai dan durasi dari seluruh percobaan yang sudah dinilai, serta aktivitas tujuh hari kalender dalam WIB. Sesi mentor terkonfirmasi yang paling dekat mengarah ke **Sesi saya** untuk membuka tautan pertemuan.
 
+Streak menghitung hari WIB berturut-turut dengan percobaan yang sudah dinilai. Streak tetap terlihat sampai akhir hari jika siswa terakhir selesai kemarin. Admin dapat memilih kuis terbit berdurasi maksimal lima menit dari **Jadwalkan tantangan**. Satu tantangan berlaku per tanggal WIB dan memakai batas percobaan kuis yang sama.
+
+Admin menyiapkan **Jadwal Ujian** sebagai draf dengan waktu WIB, lokasi, dan instruksi. Setelah diterbitkan, jadwal berjalan dan mendatang tampil di dashboard serta halaman **Jadwal Ujian** siswa. Admin bisa menarik jadwal dari halaman siswa.
+
 Di **Daftar Kuis**, gabungkan pencarian, topik, tingkat, dan status. Gunakan **Simpan kuis** untuk menandai kuis secara pribadi, lalu pilih status **Tersimpan** untuk menemukannya lagi. Pada **Hasil & Pembahasan**, pilih **Siapkan cetak** untuk membuka seluruh soal, lalu gunakan dialog browser untuk mencetak atau menyimpan PDF.
 
 Di **Profil dan Riwayat**, siswa dapat menyimpan atau mengosongkan sekolah, kelas, jurusan, minat belajar, dan bio. Isian akademik tampil hanya kepada pemilik akun. Nama akun dan akses masuk dikelola melalui **Akun Siswa** di admin.
@@ -85,6 +91,8 @@ Pengaturan 9Router lokal, alternatif Vercel AI Gateway, dan perintah smoke test 
 ## Pengujian
 
 Jalankan `npm test`. Test runner membuat basis data temporer bernama `eduquest_test_…`, menjalankan migrasi, menyalakan server PHP pada port loopback yang tersedia, lalu menghapus basis data temporer setelah selesai. Gunakan server PostgreSQL khusus pengembangan dengan role yang memiliki izin `CREATEDB`. Atur `EDUQUEST_TEST_DSN` jika koneksi admin lokal berbeda dari `pgsql:host=127.0.0.1;port=5432;dbname=postgres`.
+
+Jalankan `node tests/run.mjs upgrade` secara terpisah untuk menguji migrasi dari skema `009` dengan data kuis yang sudah tersimpan.
 
 Gunakan `CHROME_PATH` jika browser berada di lokasi nonstandar. `EDUQUEST_SCREENSHOTS=1` menyimpan tangkapan layar ke `test-artifacts/`.
 

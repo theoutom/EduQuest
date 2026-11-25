@@ -27,6 +27,13 @@ const snapshot = async name => {
 const visit = path => page.goto(new URL(path, base).href);
 const navigate = selector => Promise.all([page.waitForNavigation(), page.click(selector)]);
 const status = text => page.waitForFunction(expected => document.querySelector('[data-save-status]').textContent.includes(expected), {}, text);
+const tabTo = async (targetPage, selector) => {
+  for (let step = 0; step < 80; step++) {
+    if (await targetPage.evaluate(target => document.activeElement.matches(target), selector)) return;
+    await targetPage.keyboard.press('Tab');
+  }
+  assert.fail('Keyboard could not reach ' + selector);
+};
 
 try {
   await page.setViewport({ width: 1440, height: 900 });
@@ -158,6 +165,22 @@ try {
   assert.equal(await page.$eval('.sidebar', node => getComputedStyle(node).display), 'none');
   assert.equal(Buffer.from(await page.pdf()).subarray(0, 5).toString(), '%PDF-');
   await page.emulateMediaType('screen');
+
+  await visit('/kuis/http-api');
+  await tabTo(page, 'form[action="/kuis/http-api/mulai"] button');
+  await Promise.all([page.waitForNavigation(), page.keyboard.press('Enter')]);
+  await tabTo(page, 'input[name="option"]');
+  await page.keyboard.press('Space');
+  await status('Tersimpan');
+  await tabTo(page, 'button[form="answer-form"][value="kumpulkan"]');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-confirm][open]');
+  assert.equal(await page.$eval(':focus', node => node.textContent), 'Kembali ke soal');
+  await tabTo(page, '[data-submit-form] button');
+  await Promise.all([page.waitForNavigation(), page.keyboard.press('Enter')]);
+  assert.match(page.url(), /\/hasil\/\d+$/);
+  assert.equal(await page.$eval('main h1', node => node.textContent), 'Hasil & Pembahasan');
+
   const adminContext = await browser.createBrowserContext();
   const admin = await adminContext.newPage();
   admin.on('pageerror', error => errors.push(error.message));
@@ -186,7 +209,8 @@ try {
   assert.match(await admin.$eval('#questions-title + .admin-list summary', node => node.textContent), /bilangan genap/);
   assert.equal(await admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   const publish = 'form:has(input[name="action"][value="publish"]) button';
-  await Promise.all([admin.waitForNavigation(), admin.click(publish)]);
+  await tabTo(admin, publish);
+  await Promise.all([admin.waitForNavigation(), admin.keyboard.press('Enter')]);
   assert.match(await admin.$eval('#questions-title', node => node.textContent), /versi terbit/);
 
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });

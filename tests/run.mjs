@@ -9,6 +9,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 const php = process.env.EDUQUEST_PHP ?? 'php';
 const suites = process.argv.slice(2);
+const upgrade = suites.includes('upgrade');
+if (upgrade && suites.length !== 1) throw new Error('Run the upgrade suite separately.');
 const enabled = suite => suites.length === 0 || suites.includes(suite);
 const publicDemo = suites.includes('public-demo');
 const phpFlags = [];
@@ -53,7 +55,12 @@ let log = '';
 try {
   if (enabled('demo')) await command(process.execPath, ['tests/demo-landing.mjs'], env);
   if (enabled('tutor')) await command(php, [...phpFlags, 'tests/tutor-gateway.php'], env);
+  if (upgrade) await command(php, [...phpFlags, 'tests/upgrade.php', 'prepare'], env);
   await command(php, [...phpFlags, 'scripts/migrate.php'], env);
+  if (upgrade) {
+    await command(php, [...phpFlags, 'scripts/migrate.php'], env);
+    await command(php, [...phpFlags, 'tests/upgrade.php', 'verify'], env);
+  }
   if (enabled('quiz')) await command(php, [...phpFlags, 'tests/quiz.php'], env);
   if (publicDemo || enabled('http') || enabled('browser') || enabled('auth') || enabled('crud') || enabled('community') || enabled('tutor') || enabled('mentor')) {
     for (const [username, role, label] of [['satrio', 'student', 'Satrio'], ['nadia', 'student', 'Nadia'], ['operator', 'admin', 'Operator']]) {

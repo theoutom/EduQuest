@@ -2,7 +2,7 @@
 
 | Layar | Fungsi yang bisa dipakai | Kriteria yang masih terbuka |
 | --- | --- | --- |
-| Dashboard | Lanjut kuis, katalog, progres pribadi, aktivitas 7 hari, sesi mentor terdekat | Streak dari aktivitas WIB, tantangan harian dan jadwal yang bisa diterbitkan admin, peringkat dari kelas yang terdaftar, pemberitahuan acara yang relevan |
+| Dashboard | Lanjut kuis, katalog, progres pribadi, aktivitas 7 hari, streak WIB, tantangan harian, jadwal ujian yang diterbitkan admin, sesi mentor terdekat | Peringkat dari kelas yang terdaftar dan pemberitahuan acara yang relevan |
 | Daftar kuis | Cari dan filter topik, tingkat, dan status, mulai, lanjut, lihat hasil, simpan atau hapus simpanan pribadi | Rating perlu sumber ulasan yang sah |
 | Profil | Identitas sesi, riwayat, progres, dan isian akademik pribadi yang bisa diedit siswa. Admin mengelola akses | Ganti kata sandi mandiri, preferensi notifikasi, verifikasi identitas, prestasi, dan kontak wali kelas |
 | Pengantar kuis | Metadata, nilai lulus, percobaan tersisa, riwayat dan aturan | Peningkatan visual target dari nilai lulus yang sudah tersimpan. Proctoring memerlukan keputusan privasi tersendiri |
