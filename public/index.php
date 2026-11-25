@@ -17,6 +17,7 @@ require "$root/app/database.php";
 require "$root/app/QuizService.php";
 require "$root/app/Auth.php";
 require "$root/app/AdminStore.php";
+require "$root/app/ClassService.php";
 require "$root/app/Community.php";
 require "$root/app/Tutor.php";
 require "$root/app/TutorGateway.php";

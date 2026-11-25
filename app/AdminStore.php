@@ -181,14 +181,28 @@ final class AdminStore
         return $quiz;
     }
 
-    public function createQuiz(array $input): int
+    public function createQuiz(array $input, ?int $classId = null): int
     {
         $slug = $this->slug($input);
-        return $this->mutate('create_quiz', $slug, function () use ($input, $slug): int {
+        return $this->mutate('create_quiz', $slug, function () use ($input, $slug, $classId): int {
+            if ($classId !== null) {
+                $this->query('SELECT pg_advisory_xact_lock_shared(476152004)');
+            }
+            if ($classId !== null && !$this->query(<<<'SQL'
+                SELECT 1 FROM eduquest.class_teachers ct JOIN eduquest.classes c ON c.id = ct.class_id
+                JOIN eduquest.students teacher ON teacher.id = ct.teacher_id AND teacher.enabled AND teacher.role = 'teacher'
+                WHERE ct.teacher_id = ? AND ct.class_id = ? AND c.archived_at IS NULL
+                SQL, [$this->actor, $classId])->fetchColumn()) {
+                throw new QuizProblem(404, 'Kelas tidak ditemukan.');
+            }
             $id = (int) $this->query(<<<'SQL'
                 INSERT INTO eduquest.quizzes (slug, title, summary, topic, level, attempt_limit)
                 VALUES (?, ?, ?, ?, ?, ?) RETURNING id
                 SQL, [$slug, ...$this->quizFields($input)])->fetchColumn();
+            if ($classId !== null) {
+                $this->query("UPDATE eduquest.quizzes SET audience = 'selected_classes', teacher_owner = ? WHERE id = ?", [$this->actor, $id]);
+                $this->query('INSERT INTO eduquest.quiz_classes (quiz_id, class_id) VALUES (?, ?)', [$id, $classId]);
+            }
             $this->query(<<<'SQL'
                 INSERT INTO eduquest.quiz_versions (quiz_id, version, duration_seconds, passing_score, tutor_enabled)
                 VALUES (?, 1, ?, ?, ?)
@@ -197,14 +211,20 @@ final class AdminStore
         });
     }
 
-    public function changeQuiz(int $id, string $action, array $input): void
+    public function changeQuiz(int $id, string $action, array $input, bool $teacher = false): void
     {
         $actions = ['update', 'settings', 'draft', 'publish', 'archive', 'restore', 'delete', 'question-save', 'question-delete'];
         if (!in_array($action, $actions, true)) {
             throw new QuizProblem(422, 'Tindakan kuis tidak dikenali.');
         }
-        $this->mutate($action . '_quiz', (string) $id, function () use ($id, $action, $input): void {
+        $this->mutate($action . '_quiz', (string) $id, function () use ($id, $action, $input, $teacher): void {
+            if ($teacher) {
+                $this->query('SELECT pg_advisory_xact_lock_shared(476152004)');
+            }
             $this->query('SELECT pg_advisory_xact_lock(476152003, ?)', [$id]);
+            if ($teacher && !(new ClassService($this->db))->teacherCanEdit($this->actor, $id)) {
+                throw new QuizProblem(404, 'Kuis tidak ditemukan.');
+            }
             $quiz = $this->quiz($id);
             if ($action === 'update') {
                 $this->query(<<<'SQL'
@@ -265,6 +285,43 @@ final class AdminStore
             SELECT id, username, name, enabled FROM eduquest.students
             WHERE role = 'student' ORDER BY name, id
             SQL)->fetchAll();
+    }
+
+    public function teachers(): array
+    {
+        return $this->query("SELECT id, username, name, enabled FROM eduquest.students WHERE role = 'teacher' ORDER BY name, id")->fetchAll();
+    }
+
+    public function createTeacher(array $input): int
+    {
+        $username = Auth::username($this->field($input, 'username'));
+        if (!Auth::validUsername($username)) {
+            throw new QuizProblem(422, 'Username tidak valid.');
+        }
+        $name = $this->text($input, 'name', 80);
+        $hash = $this->password($input);
+        return $this->mutate('create_teacher', $username, function () use ($username, $name, $hash): int {
+            return (int) $this->query(
+                "INSERT INTO eduquest.students (username, name, password_hash, role) VALUES (?, ?, ?, 'teacher') RETURNING id",
+                [$username, $name, $hash],
+            )->fetchColumn();
+        });
+    }
+
+    public function changeTeacher(int $id, string $action, array $input): void
+    {
+        if (!in_array($action, ['disable', 'reset'], true)) {
+            throw new QuizProblem(422, 'Tindakan guru tidak dikenali.');
+        }
+        $this->mutate($action . '_teacher', (string) $id, function () use ($id, $action, $input): void {
+            Auth::lockAccount($this->db, $id);
+            $this->one("SELECT id FROM eduquest.students WHERE id = ? AND role = 'teacher'", [$id], 'Guru');
+            if ($action === 'disable') {
+                $this->confirmed($input, fn () => $this->query("UPDATE eduquest.students SET enabled = false, password_hash = NULL WHERE id = ? AND role = 'teacher'", [$id]));
+            } else {
+                $this->query("UPDATE eduquest.students SET enabled = true, password_hash = ? WHERE id = ? AND role = 'teacher'", [$this->password($input), $id]);
+            }
+        });
     }
 
     public function student(int $id): array

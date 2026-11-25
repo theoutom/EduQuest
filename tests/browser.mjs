@@ -217,6 +217,12 @@ try {
   await tabTo(admin, publish);
   await Promise.all([admin.waitForNavigation(), admin.keyboard.press('Enter')]);
   assert.match(await admin.$eval('#questions-title', node => node.textContent), /versi terbit/);
+  await admin.goto(base + '/admin/kelas');
+  await admin.type('input[name="name"]', 'XI-Browser');
+  await admin.type('input[name="year"]', '2026/2027');
+  await Promise.all([admin.waitForNavigation(), admin.click('form[action="/admin/kelas"] button')]);
+  assert.match(admin.url(), /\/admin\/kelas\/\d+\?saved=1$/);
+  assert.equal(await admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
 
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
   await visit('/komunitas');

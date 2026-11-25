@@ -1,14 +1,43 @@
 <?php
-$endpoint = '/admin/kuis/' . $item['id'];
+$endpoint = (!empty($teacherEditor) ? '/guru/kuis/' : '/admin/kuis/') . $item['id'];
 $draft = $item['draft'];
 $isPublished = (bool) array_filter($item['versions'], static fn (array $v): bool => $v['published_at'] !== null);
 $pending = formValue($submitted, 'action');
 ?>
-<a class="breadcrumb" href="/admin/kuis">Daftar kuis</a>
+<a class="breadcrumb" href="<?= !empty($teacherEditor) ? '/guru/kuis' : '/admin/kuis' ?>">Daftar kuis</a>
 <header class="page-header"><h1><?= h($item['title']) ?></h1><p class="muted"><?= h($item['slug']) ?></p></header>
 <?php require __DIR__ . '/admin-feedback.php'; ?>
 <div class="admin-grid">
     <div class="admin-stack">
+        <?php if (!empty($teacherEditor)): ?>
+        <section class="panel">
+            <h2>Hasil siswa kelas saya</h2>
+            <?php if (!$teacherResults): ?><p>Belum ada hasil.</p><?php endif; ?>
+            <ul class="admin-list">
+                <?php foreach ($teacherResults as $result): ?>
+                <li><?= h($result['name']) ?> · <?= h($result['score']) ?>/100</li>
+                <?php endforeach; ?>
+            </ul>
+        </section>
+        <?php endif; ?>
+        <?php if (empty($teacherEditor)): ?><section class="panel">
+            <h2>Sasaran kelas</h2>
+            <form class="admin-form" method="post" action="<?= h($endpoint) ?>">
+                <?php csrfField($csrf); ?>
+                <input type="hidden" name="action" value="audience">
+                <label class="field">Akses kuis
+                    <select name="audience">
+                        <option value="all_classes" <?= $item['audience'] === 'all_classes' ? 'selected' : '' ?>>Semua kelas</option>
+                        <option value="selected_classes" <?= $item['audience'] === 'selected_classes' ? 'selected' : '' ?>>Kelas terpilih</option>
+                    </select>
+                </label>
+                <?php foreach ($classes as $class): ?>
+                <?php if ($class['archived_at'] !== null) continue; ?>
+                <label class="check"><input type="checkbox" name="classes[]" value="<?= h($class['id']) ?>" <?= in_array((int) $class['id'], $quizClasses, true) ? 'checked' : '' ?>> <?= h($class['name']) ?> · <?= h($class['academic_year']) ?></label>
+                <?php endforeach; ?>
+                <button class="button button-quiet" type="submit">Simpan sasaran</button>
+            </form>
+        </section><?php endif; ?>
         <section class="panel" aria-labelledby="quiz-details">
             <h2 id="quiz-details">Informasi katalog</h2>
             <form class="admin-form" method="post" action="<?= h($endpoint) ?>">
@@ -53,6 +82,7 @@ $pending = formValue($submitted, 'action');
                 <button class="button button-primary" type="submit"><?= $draft ? 'Terbitkan versi draf' : 'Buat draf revisi' ?></button>
             </form>
             <?php endif; ?>
+            <?php if (empty($teacherEditor)): ?>
             <?php if ($item['archived_at'] !== null): ?>
             <form class="admin-form" method="post" action="<?= h($endpoint) ?>">
                 <?php csrfField($csrf); ?>
@@ -74,6 +104,7 @@ $pending = formValue($submitted, 'action');
                 <label class="check"><input type="checkbox" name="confirm" value="1" required> Konfirmasi hapus draf beserta soal</label>
                 <button class="button button-danger" type="submit">Hapus draf kuis</button>
             </form>
+            <?php endif; ?>
             <?php endif; ?>
         </section>
     </div>

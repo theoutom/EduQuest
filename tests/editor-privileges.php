@@ -22,6 +22,14 @@ $checks = $db->query(<<<'SQL'
     SQL)->fetch();
 $db->beginTransaction();
 $checks['cannot_update_admin_accounts'] = $db->exec("UPDATE eduquest.students SET name = 'Fixture' WHERE role = 'admin'") === 0;
+$db->exec('SAVEPOINT admin_insert_check');
+try {
+    $db->exec("INSERT INTO eduquest.students (username, name, role, password_hash) VALUES ('admin-attempt', 'Test', 'admin', 'fixture')");
+    $checks['cannot_create_admin_account'] = false;
+} catch (PDOException $error) {
+    $checks['cannot_create_admin_account'] = $error->getCode() === '42501';
+    $db->exec('ROLLBACK TO SAVEPOINT admin_insert_check');
+}
 $db->rollBack();
 foreach ($checks as $name => $passed) {
     if (!$passed) {

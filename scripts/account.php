@@ -10,9 +10,9 @@ $username = Auth::username($argv[2] ?? '');
 $role = $argv[3] ?? '';
 $name = trim($argv[4] ?? '');
 if (!Auth::validUsername($username) || !in_array($action, ['set', 'disable'], true)
-    || ($action === 'set' && (!in_array($role, ['student', 'admin'], true) || $name === ''
+    || ($action === 'set' && (!in_array($role, ['student', 'admin', 'teacher'], true) || $name === ''
         || !mb_check_encoding($name, 'UTF-8') || mb_strlen($name) > 80))) {
-    fwrite(STDERR, "Usage: php scripts/account.php set <username> <student|admin> <name> (password via stdin)\n");
+    fwrite(STDERR, "Usage: php scripts/account.php set <username> <student|admin|teacher> <name> (password via stdin)\n");
     fwrite(STDERR, "       php scripts/account.php disable <username>\n");
     exit(1);
 }

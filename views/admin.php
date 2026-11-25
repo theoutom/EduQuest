@@ -3,6 +3,8 @@
     <p class="muted">Ringkasan penggunaan kuis dan aktivitas keamanan.</p>
 </header>
 <nav class="admin-shortcuts" aria-label="Aksi administrasi">
+    <a class="button button-quiet" href="/admin/kelas">Kelola kelas</a>
+    <a class="button button-quiet" href="/admin/guru">Kelola guru</a>
     <a class="button button-primary" href="/admin/kuis">Kelola kuis dan soal</a>
     <a class="button button-quiet" href="/admin/topik">Kelola topik</a>
     <a class="button button-quiet" href="/admin/siswa">Kelola akun siswa</a>

@@ -1,4 +1,11 @@
 GRANT USAGE ON SCHEMA eduquest TO __RUNTIME_ROLE__;
+GRANT SELECT, INSERT, UPDATE ON eduquest.classes TO __RUNTIME_ROLE__;
+GRANT SELECT, INSERT, DELETE ON eduquest.class_students, eduquest.class_teachers, eduquest.quiz_classes TO __RUNTIME_ROLE__;
+GRANT UPDATE (audience) ON eduquest.quizzes TO __RUNTIME_ROLE__;
+GRANT UPDATE (teacher_owner) ON eduquest.quizzes TO __RUNTIME_ROLE__;
+GRANT SELECT, INSERT, DELETE ON eduquest.exam_classes TO __RUNTIME_ROLE__;
+GRANT UPDATE (audience) ON eduquest.exam_schedule TO __RUNTIME_ROLE__;
+GRANT USAGE ON SEQUENCE eduquest.classes_id_seq TO __RUNTIME_ROLE__;
 GRANT SELECT, INSERT, DELETE ON eduquest.topics, eduquest.quizzes,
     eduquest.questions, eduquest.options TO __RUNTIME_ROLE__;
 GRANT SELECT, DELETE ON eduquest.quiz_versions TO __RUNTIME_ROLE__;
@@ -8,6 +15,7 @@ GRANT UPDATE (title, summary, topic, level, attempt_limit, archived_at) ON eduqu
 GRANT UPDATE (duration_seconds, passing_score, tutor_enabled, published_at) ON eduquest.quiz_versions TO __RUNTIME_ROLE__;
 GRANT UPDATE (stem, snippet, explanation) ON eduquest.questions TO __RUNTIME_ROLE__;
 GRANT SELECT (id, username, name, role, enabled), DELETE ON eduquest.students TO __RUNTIME_ROLE__;
+GRANT INSERT (role) ON eduquest.students TO __RUNTIME_ROLE__;
 GRANT INSERT (username, name, password_hash) ON eduquest.students TO __RUNTIME_ROLE__;
 GRANT UPDATE (name, enabled, password_hash) ON eduquest.students TO __RUNTIME_ROLE__;
 GRANT SELECT ON eduquest.attempts TO __RUNTIME_ROLE__;

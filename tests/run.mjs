@@ -57,14 +57,18 @@ try {
   if (enabled('tutor')) await command(php, [...phpFlags, 'tests/tutor-gateway.php'], env);
   if (upgrade) await command(php, [...phpFlags, 'tests/upgrade.php', 'prepare'], env);
   await command(php, [...phpFlags, 'scripts/migrate.php'], env);
+  if (suites.includes('classes')) await command(php, [...phpFlags, 'tests/classes.php'], env);
   if (upgrade) {
     await command(php, [...phpFlags, 'scripts/migrate.php'], env);
     await command(php, [...phpFlags, 'tests/upgrade.php', 'verify'], env);
   }
   if (enabled('quiz')) await command(php, [...phpFlags, 'tests/quiz.php'], env);
-  if (publicDemo || enabled('http') || enabled('browser') || enabled('auth') || enabled('crud') || enabled('community') || enabled('tutor') || enabled('mentor')) {
+  if (publicDemo || enabled('http') || enabled('browser') || enabled('auth') || enabled('crud') || enabled('community') || enabled('tutor') || enabled('mentor') || suites.includes('classes-http')) {
     for (const [username, role, label] of [['satrio', 'student', 'Satrio'], ['nadia', 'student', 'Nadia'], ['operator', 'admin', 'Operator']]) {
       await command(php, [...phpFlags, 'scripts/account.php', 'set', username, role, label], env, password + '\n');
+    }
+    if (suites.includes('classes-http')) {
+      await command(php, [...phpFlags, 'scripts/account.php', 'set', 'guru-uji', 'teacher', 'Guru Uji'], env, password + '\n');
     }
     if (enabled('auth')) await command(php, [...phpFlags, 'tests/auth-state.php'], testEnv);
     const webEnv = { ...env };
@@ -153,6 +157,7 @@ try {
     }
     if (!ready) throw new Error('PHP did not start on ' + url);
     if (publicDemo) await command(process.execPath, ['tests/public-demo.mjs'], testEnv);
+    if (suites.includes('classes-http')) await command(process.execPath, ['tests/classes-http.mjs'], testEnv);
     if (enabled('http')) await command(process.execPath, ['tests/http.mjs'], testEnv);
     if (enabled('browser')) await command(process.execPath, ['tests/browser.mjs'], testEnv);
     if (enabled('crud')) await command(process.execPath, ['tests/admin-crud.mjs'], testEnv);

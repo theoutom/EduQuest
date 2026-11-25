@@ -32,10 +32,20 @@ if ($mode === 'prepare') {
     }
     $db->commit();
 
-    $attemptId = (int) $quiz->start(1, 'struktur-data')['id'];
-    $question = $quiz->attempt(1, $attemptId)['questions'][0];
-    $quiz->save(1, $attemptId, (int) $question['id'], (int) $question['options'][0]['id'], false);
-    $quiz->submit(1, $attemptId);
+    $attemptId = (int) $db->query(<<<'SQL'
+        INSERT INTO eduquest.attempts (student_id, quiz_id, version_id, started_at, deadline, finished_at, score)
+        SELECT 1, q.id, v.id, clock_timestamp(), clock_timestamp() + interval '10 minutes', clock_timestamp(), 33
+        FROM eduquest.quizzes q JOIN eduquest.quiz_versions v ON v.quiz_id = q.id
+        WHERE q.slug = 'struktur-data' RETURNING id
+        SQL)->fetchColumn();
+    $statement = $db->prepare(<<<'SQL'
+        INSERT INTO eduquest.answers (attempt_id, version_id, question_id, option_id, doubtful)
+        SELECT a.id, a.version_id, q.id, o.id, false
+        FROM eduquest.attempts a JOIN eduquest.questions q ON q.version_id = a.version_id AND q.position = 1
+        JOIN eduquest.options o ON o.question_id = q.id AND o.is_correct
+        WHERE a.id = ?
+        SQL);
+    $statement->execute([$attemptId]);
     exit;
 }
 

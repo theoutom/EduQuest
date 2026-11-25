@@ -61,9 +61,28 @@ final class Http
             $this->logout();
             return;
         }
+        if ($this->student['role'] === 'teacher') {
+            if ($this->path === '/' && $this->method === 'GET') {
+                $this->redirect('/guru');
+                return;
+            }
+            if ($this->path === '/guru' && $this->method === 'GET') {
+                $this->page('teacher-home', 'Ruang Guru', ['classes' => (new ClassService($this->db))->teacherClasses($student)]);
+                return;
+            }
+            if (preg_match('~^/guru/kuis(?:/(\d{1,10}))?$~D', $this->path, $match)) {
+                $this->teacherQuiz($student, isset($match[1]) ? $this->positive($match[1], 404) : null);
+                return;
+            }
+            throw new QuizProblem(403, 'Halaman ini tidak tersedia untuk guru.');
+        }
         if ($this->path === '/admin' || str_starts_with($this->path, '/admin/')) {
             if ($this->student['role'] !== 'admin') {
                 throw new QuizProblem(403, 'Halaman ini hanya tersedia untuk admin.');
+            }
+            if (preg_match('~^/admin/kelas(?:/(\d{1,10}))?$~D', $this->path, $match)) {
+                $this->classes(isset($match[1]) ? $this->positive($match[1], 404) : null);
+                return;
             }
             if (preg_match('~^/admin/komunitas(?:/(\d{1,10}))?$~D', $this->path, $match)) {
                 $this->communityModeration($student, isset($match[1]) ? $this->positive($match[1], 404) : null);
@@ -100,7 +119,7 @@ final class Http
                 'progress' => $this->quiz->progress($student),
                 'streak' => $this->quiz->streak($student),
                 'challenge' => $this->quiz->dailyChallenge($student, $items),
-                'exams' => publicDemo() ? [] : $this->quiz->upcomingExams(3),
+                'exams' => publicDemo() ? [] : $this->quiz->upcomingExams(3, 0, $student),
                 'activity' => $this->quiz->weeklyActivity($student),
                 'mentor' => publicDemo() ? null : (new Mentor($this->db))->nextSession($student),
             ]);
@@ -168,7 +187,7 @@ final class Http
         }
         if ($this->method === 'GET' && $this->path === '/jadwal') {
             $number = $this->communityPage('hal');
-            $rows = $this->quiz->upcomingExams(21, ($number - 1) * 20);
+            $rows = $this->quiz->upcomingExams(21, ($number - 1) * 20, $student);
             $this->page('exam-schedule', 'Jadwal Ujian', compact('number') + [
                 'exams' => array_slice($rows, 0, 20), 'hasNext' => count($rows) > 20,
             ]);
@@ -396,7 +415,7 @@ final class Http
 
     private function adminArea(int $actor): void
     {
-        if (!preg_match('~^/admin/(topik|kuis|siswa|riwayat|tantangan|jadwal)(?:/(\d{1,10}))?$~D', $this->path, $match)) {
+        if (!preg_match('~^/admin/(topik|kuis|siswa|guru|riwayat|tantangan|jadwal)(?:/(\d{1,10}))?$~D', $this->path, $match)) {
             throw new QuizProblem(404, 'Halaman administrasi tidak ditemukan.');
         }
         $section = $match[1];
@@ -414,6 +433,24 @@ final class Http
         $submitted = [];
         if ($this->method === 'POST') {
             try {
+                if ($section === 'kuis' && $id !== null && $action === 'audience') {
+                    $audience = $this->input($_POST, 'audience');
+                    $values = $audience === 'all_classes' ? [] : ($_POST['classes'] ?? []);
+                    $values = is_array($values) ? $values : [$values];
+                    $ids = array_map(fn ($value) => $this->positive(is_string($value) ? $value : ''), $values);
+                    (new ClassService(adminDatabase(), $actor))->setQuizAudience($id, $audience, $ids);
+                    $this->redirect("/admin/kuis/$id?saved=1");
+                    return;
+                }
+                if ($section === 'jadwal' && $id !== null && $action === 'audience') {
+                    $audience = $this->input($_POST, 'audience');
+                    $values = $audience === 'all_classes' ? [] : ($_POST['classes'] ?? []);
+                    $values = is_array($values) ? $values : [$values];
+                    $ids = array_map(fn ($value) => $this->positive(is_string($value) ? $value : ''), $values);
+                    (new ClassService(adminDatabase(), $actor))->setExamAudience($id, $audience, $ids);
+                    $this->redirect("/admin/jadwal/$id?saved=1");
+                    return;
+                }
                 $destination = $this->adminMutation($store, $section, $id, $action);
                 $this->redirect($destination . '?saved=1');
                 return;
@@ -437,14 +474,18 @@ final class Http
             if ($id === null) {
                 $this->page('admin-exams', 'Kelola Jadwal Ujian', $common + ['items' => $store->examSchedule()]);
             } else {
-                $this->page('admin-exam', 'Editor Jadwal Ujian', $common + ['item' => $store->exam($id)]);
+                $examClasses = new ClassService(adminDatabase());
+                $this->page('admin-exam', 'Editor Jadwal Ujian', $common + ['item' => $store->exam($id),
+                    'classes' => $examClasses->list(), 'examClasses' => $examClasses->examClasses($id)]);
             }
         } elseif ($section === 'kuis') {
-            $data = ['topics' => $store->topics(), 'levels' => AdminStore::LEVELS];
+            $data = ['topics' => $store->topics(), 'levels' => AdminStore::LEVELS,
+                'classes' => (new ClassService(adminDatabase()))->list()];
             if ($id === null) {
                 $this->page('admin-quizzes', 'Kelola Kuis', $common + $data + ['items' => $store->quizzes()]);
             } else {
-                $this->page('admin-quiz', 'Editor Kuis', $common + $data + ['item' => $store->quiz($id)]);
+                $this->page('admin-quiz', 'Editor Kuis', $common + $data + ['item' => $store->quiz($id),
+                    'quizClasses' => (new ClassService(adminDatabase()))->quizClasses($id)]);
             }
         } elseif ($section === 'siswa') {
             if ($id === null) {
@@ -452,8 +493,93 @@ final class Http
             } else {
                 $this->page('admin-student', 'Akun Siswa', $common + ['item' => $store->student($id)]);
             }
+        } elseif ($section === 'guru') {
+            $this->page('admin-teachers', 'Kelola Guru', $common + ['items' => $store->teachers()]);
         } else {
             $this->page('admin-history', 'Riwayat Admin', $store->history());
+        }
+    }
+
+    private function classes(?int $id): void
+    {
+        $store = new ClassService(adminDatabase(), (int) $this->student['id']);
+        if ($this->method === 'POST') {
+            $action = $this->input($_POST, 'action');
+            if ($id === null && $action === 'create') {
+                $id = $store->create($this->input($_POST, 'name'), $this->input($_POST, 'year'));
+            } elseif ($id !== null && in_array($action, ['assign', 'remove'], true)) {
+                $student = $this->positive($this->input($_POST, 'student_id'));
+                if ($action === 'assign') {
+                    $store->assignStudent($id, $student);
+                } else {
+                    $store->removeStudent($id, $student);
+                }
+            } elseif ($id !== null && in_array($action, ['assign-teacher', 'remove-teacher'], true)) {
+                $teacher = $this->positive($this->input($_POST, 'teacher_id'));
+                if ($action === 'assign-teacher') {
+                    $store->assignTeacher($id, $teacher);
+                } else {
+                    $store->removeTeacher($id, $teacher);
+                }
+            } elseif ($id !== null && in_array($action, ['archive', 'restore'], true)) {
+                if ($action === 'archive' && $this->input($_POST, 'confirm') !== '1') {
+                    throw new QuizProblem(422, 'Centang konfirmasi untuk mengarsipkan kelas.');
+                }
+                $store->setArchived($id, $action === 'archive');
+            } else {
+                throw new QuizProblem(422, 'Tindakan kelas tidak dikenali.');
+            }
+            $this->redirect("/admin/kelas/$id?saved=1");
+            return;
+        }
+        if ($id === null) {
+            $this->page('admin-classes', 'Kelola Kelas', ['items' => $store->list()]);
+        } else {
+            $this->page('admin-class', 'Anggota Kelas', $store->details($id));
+        }
+    }
+
+    private function teacherQuiz(int $teacher, ?int $id): void
+    {
+        $editor = adminDatabase();
+        $classes = new ClassService($editor);
+        $store = new AdminStore($editor, $teacher);
+        if ($id !== null && !$classes->teacherCanEdit($teacher, $id)) {
+            throw new QuizProblem(404, 'Kuis tidak ditemukan.');
+        }
+        if ($this->method === 'POST') {
+            $action = $this->input($_POST, 'action');
+            if ($id === null && $action === 'create') {
+                $id = $store->createQuiz($_POST, $this->positive($this->input($_POST, 'class_id')));
+            } elseif ($id !== null && in_array($action, ['update', 'settings', 'draft', 'publish', 'question-save', 'question-delete'], true)) {
+                $store->changeQuiz($id, $action, $_POST, true);
+            } else {
+                throw new QuizProblem(403, 'Tindakan ini tidak tersedia untuk guru.');
+            }
+            $this->redirect("/guru/kuis/$id?saved=1");
+            return;
+        }
+        $data = ['topics' => $store->topics(), 'levels' => AdminStore::LEVELS,
+            'classes' => $classes->teacherClasses($teacher), 'message' => '', 'submitted' => [], 'saved' => false];
+        if ($id === null) {
+            $this->page('teacher-quizzes', 'Kuis Guru', $data + ['items' => $classes->teacherQuizzes($teacher)]);
+        } else {
+            $editor->beginTransaction();
+            try {
+                $editor->query('SELECT pg_advisory_xact_lock_shared(476152004)');
+                if (!$classes->teacherCanEdit($teacher, $id)) {
+                    throw new QuizProblem(404, 'Kuis tidak ditemukan.');
+                }
+                $page = ['item' => $store->quiz($id), 'quizClasses' => $classes->quizClasses($id),
+                    'teacherEditor' => true, 'teacherResults' => $classes->teacherResults($teacher, $id)];
+                $editor->commit();
+            } catch (Throwable $error) {
+                if ($editor->inTransaction()) {
+                    $editor->rollBack();
+                }
+                throw $error;
+            }
+            $this->page('admin-quiz', 'Editor Kuis', $data + $page);
         }
     }
 
@@ -690,6 +816,14 @@ final class Http
 
     private function adminMutation(AdminStore $store, string $section, ?int $id, string $action): string
     {
+        if ($section === 'guru' && $id === null && $action === 'create') {
+            $store->createTeacher($_POST);
+            return '/admin/guru';
+        }
+        if ($section === 'guru' && $id !== null) {
+            $store->changeTeacher($id, $action, $_POST);
+            return '/admin/guru';
+        }
         if ($section === 'jadwal') {
             if ($id === null) {
                 if ($action !== 'create') {

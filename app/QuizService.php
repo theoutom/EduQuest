@@ -38,10 +38,16 @@ final class QuizService
                 FROM eduquest.attempts WHERE student_id = ? AND quiz_id = q.id
             ) history
             WHERE (q.archived_at IS NULL OR (CAST(? AS boolean) AND history.used > 0))
+              AND (q.audience = 'all_classes' OR EXISTS (
+                  SELECT 1 FROM eduquest.quiz_classes qc
+                  JOIN eduquest.class_students cs ON cs.class_id = qc.class_id
+                  JOIN eduquest.classes c ON c.id = cs.class_id AND c.archived_at IS NULL
+                  WHERE qc.quiz_id = q.id AND cs.student_id = ?
+              ))
               AND q.title ILIKE ? ESCAPE '!' AND q.topic = COALESCE(NULLIF(?, ''), q.topic)
               AND q.level = COALESCE(NULLIF(?, ''), q.level)
             ORDER BY q.id
-            SQL, [$student, $includeArchivedAttempts ? 'true' : 'false', "%$needle%", $topic, $level])->fetchAll();
+            SQL, [$student, $includeArchivedAttempts ? 'true' : 'false', $student, "%$needle%", $topic, $level])->fetchAll();
     }
 
     public function bookmarks(int $student): array
@@ -58,7 +64,9 @@ final class QuizService
                 SQL, [$student, $slug]);
             return;
         }
-        if (!$this->query(<<<'SQL'
+        $this->transaction(function () use ($student, $slug): void {
+            $this->findQuiz($student, $slug);
+            if (!$this->query(<<<'SQL'
             WITH available AS (
                 SELECT q.id FROM eduquest.quizzes q
                 WHERE q.slug = ? AND q.archived_at IS NULL
@@ -69,8 +77,9 @@ final class QuizService
             )
             SELECT id FROM available
             SQL, [$slug, $student])->fetchColumn()) {
-            throw new QuizProblem(404, 'Kuis tidak tersedia untuk disimpan.');
-        }
+                throw new QuizProblem(404, 'Kuis tidak tersedia untuk disimpan.');
+            }
+        });
     }
 
     public function topics(): array
@@ -129,7 +138,9 @@ final class QuizService
     public function attempt(int $student, int $id): array
     {
         return $this->transaction(function () use ($student, $id): array {
-            $attempt = $this->settle($this->lockedAttempt($student, $id));
+            $attempt = $this->lockedAttempt($student, $id);
+            $this->requireActiveAccess($student, $attempt);
+            $attempt = $this->settle($attempt);
             if ($attempt['score'] !== null) {
                 return $attempt;
             }
@@ -153,7 +164,9 @@ final class QuizService
     public function save(int $student, int $id, int $question, ?int $option, bool $doubtful): void
     {
         $saved = $this->transaction(function () use ($student, $id, $question, $option, $doubtful): bool {
-            $attempt = $this->settle($this->lockedAttempt($student, $id));
+            $attempt = $this->lockedAttempt($student, $id);
+            $this->requireActiveAccess($student, $attempt);
+            $attempt = $this->settle($attempt);
             if ($attempt['score'] !== null) {
                 return false;
             }
@@ -188,7 +201,9 @@ final class QuizService
     public function submit(int $student, int $id): array
     {
         return $this->transaction(function () use ($student, $id): array {
-            $attempt = $this->settle($this->lockedAttempt($student, $id), true);
+            $attempt = $this->lockedAttempt($student, $id);
+            $this->requireActiveAccess($student, $attempt);
+            $attempt = $this->settle($attempt, true);
             return $this->summary($attempt);
         });
     }
@@ -196,7 +211,9 @@ final class QuizService
     public function review(int $student, int $id): array
     {
         return $this->transaction(function () use ($student, $id): array {
-            $attempt = $this->settle($this->lockedAttempt($student, $id));
+            $attempt = $this->lockedAttempt($student, $id);
+            $this->requireActiveAccess($student, $attempt);
+            $attempt = $this->settle($attempt);
             if ($attempt['score'] === null) {
                 throw new QuizProblem(409, 'Pembahasan tersedia setelah kuis dikumpulkan.');
             }
@@ -231,13 +248,27 @@ final class QuizService
         throw new QuizProblem(404, 'Kuis tidak ditemukan.');
     }
 
+    private function requireActiveAccess(int $student, array $attempt): void
+    {
+        if ($attempt['score'] !== null) {
+            return;
+        }
+        $this->findQuiz($student, $attempt['slug'], true);
+    }
+
     public function history(int $student): array
     {
         return $this->query(<<<'SQL'
             SELECT a.id, q.title, a.score, a.finished_at,
                    a.finished_at IS NULL AND a.deadline > statement_timestamp() AS active
             FROM eduquest.attempts a JOIN eduquest.quizzes q ON q.id = a.quiz_id
-            WHERE a.student_id = ? ORDER BY a.id DESC LIMIT 100
+            WHERE a.student_id = ? AND (a.finished_at IS NOT NULL OR q.audience = 'all_classes' OR EXISTS (
+                SELECT 1 FROM eduquest.quiz_classes qc
+                JOIN eduquest.class_students cs ON cs.class_id = qc.class_id
+                JOIN eduquest.classes c ON c.id = cs.class_id AND c.archived_at IS NULL
+                WHERE qc.quiz_id = q.id AND cs.student_id = a.student_id
+            ))
+            ORDER BY a.id DESC LIMIT 100
             SQL, [$student])->fetchAll();
     }
 
@@ -247,6 +278,12 @@ final class QuizService
             SELECT a.id, q.title
             FROM eduquest.attempts a JOIN eduquest.quizzes q ON q.id = a.quiz_id
             WHERE a.student_id = ? AND a.id <> ? AND a.finished_at IS NULL AND a.deadline > statement_timestamp()
+              AND (q.audience = 'all_classes' OR EXISTS (
+                SELECT 1 FROM eduquest.quiz_classes qc
+                JOIN eduquest.class_students cs ON cs.class_id = qc.class_id
+                JOIN eduquest.classes c ON c.id = cs.class_id AND c.archived_at IS NULL
+                WHERE qc.quiz_id = q.id AND cs.student_id = a.student_id
+              ))
             ORDER BY a.deadline, a.id
             SQL, [$student, $featuredId])->fetchAll();
     }
@@ -314,13 +351,19 @@ final class QuizService
         return $quiz && $quiz['duration_seconds'] <= 300 ? $quiz + $selection : null;
     }
 
-    public function upcomingExams(int $limit, int $offset = 0): array
+    public function upcomingExams(int $limit, int $offset = 0, ?int $student = null): array
     {
         return $this->query(<<<'SQL'
             SELECT title, location, note, starts_at, ends_at, starts_at <= statement_timestamp() AS ongoing
-            FROM eduquest.published_exam_schedule WHERE ends_at > statement_timestamp()
+            FROM eduquest.published_exam_schedule e WHERE ends_at > statement_timestamp()
+              AND (e.audience = 'all_classes' OR EXISTS (
+                SELECT 1 FROM eduquest.exam_classes ec
+                JOIN eduquest.class_students cs ON cs.class_id = ec.class_id
+                JOIN eduquest.classes c ON c.id = cs.class_id AND c.archived_at IS NULL
+                WHERE ec.exam_id = e.id AND cs.student_id = ?
+              ))
             ORDER BY starts_at, id LIMIT ? OFFSET ?
-            SQL, [$limit, $offset])->fetchAll();
+            SQL, [$student, $limit, $offset])->fetchAll();
     }
 
     private function lockedAttempt(int $student, int $id): array
@@ -399,6 +442,7 @@ final class QuizService
     {
         $this->db->beginTransaction();
         try {
+            $this->db->query('SELECT pg_advisory_xact_lock_shared(476152004)');
             $result = $operation();
             $this->db->commit();
             return $result;

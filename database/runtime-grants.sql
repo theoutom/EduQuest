@@ -1,4 +1,6 @@
 GRANT USAGE ON SCHEMA eduquest TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.classes, eduquest.class_students, eduquest.class_teachers, eduquest.quiz_classes TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.exam_classes TO __RUNTIME_ROLE__;
 GRANT SELECT ON eduquest.students, eduquest.topics, eduquest.quizzes, eduquest.quiz_versions,
     eduquest.questions, eduquest.options TO __RUNTIME_ROLE__;
 GRANT SELECT ON eduquest.attempts, eduquest.answers TO __RUNTIME_ROLE__;

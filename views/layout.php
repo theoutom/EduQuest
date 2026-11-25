@@ -21,8 +21,8 @@
                         <summary class="button button-quiet"><span class="menu-mark" aria-hidden="true"></span> Menu</summary>
                         <div class="mobile-nav-panel"><?php require __DIR__ . '/navigation.php'; ?></div>
                     </details>
-                    <span class="topbar-label"><?= $isAdmin ? 'Ruang administrasi' : 'Ruang belajar' ?></span>
-                    <a class="account-link" href="<?= $isAdmin ? '/admin' : '/profil' ?>">
+                    <span class="topbar-label"><?= $isAdmin ? 'Ruang administrasi' : ($isTeacher ? 'Ruang guru' : 'Ruang belajar') ?></span>
+                    <a class="account-link" href="<?= $isAdmin ? '/admin' : ($isTeacher ? '/guru' : '/profil') ?>">
                         <span class="avatar" aria-hidden="true"><?= h(mb_substr($student['name'], 0, 1)) ?></span>
                         <span><?= h($student['name']) ?></span>
                     </a>
