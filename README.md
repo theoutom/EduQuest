@@ -63,6 +63,8 @@ Di **Profil dan Riwayat**, siswa dapat menyimpan atau mengosongkan sekolah, kela
 
 ## Mengelola materi dan akun
 
+Untuk pilot kelas, admin dapat membuat kelas berdasarkan tahun ajaran melalui **Kelola kelas**, menambahkan siswa, dan menugaskan guru. Buat akun guru melalui **Kelola guru**. Guru mengelola kuis miliknya untuk kelas yang ditugaskan, serta melihat hasil siswa yang masih menjadi anggota kelas tersebut. Admin dapat memilih sasaran semua kelas atau kelas terpilih pada editor kuis dan jadwal. Riwayat hasil yang telah selesai tetap tersedia bagi pemiliknya.
+
 1. Dari [dasbor admin](http://127.0.0.1:8080/admin), buat topik dan draf kuis.
 2. Tambahkan pertanyaan, opsi, kunci, dan pembahasan, lalu terbitkan draf. Untuk revisi berikutnya, pilih **Buat draf revisi** agar siswa tetap bisa memakai versi sebelumnya sampai revisi diterbitkan.
 3. Arsipkan kuis untuk menghentikan percobaan baru. Sesi berjalan tetap bisa dilanjutkan. Hapus permanen tersedia untuk kuis yang belum pernah terbit dan topik yang belum digunakan.
