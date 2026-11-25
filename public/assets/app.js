@@ -1,5 +1,28 @@
 'use strict';
 
+document.querySelectorAll('[data-question-editor]').forEach(form => {
+  const rows = Array.from(form.querySelectorAll('[data-option-row]'));
+  const addButton = form.querySelector('[data-add-option]');
+  let visibleCount = 2;
+  rows.forEach((row, index) => {
+    if (row.querySelector('input[type="text"], input:not([type])').value || row.querySelector('input[type="radio"]').checked) {
+      visibleCount = Math.max(visibleCount, index + 1);
+    }
+  });
+
+  function updateOptions() {
+    rows.forEach((row, index) => { row.hidden = index >= visibleCount; });
+    addButton.hidden = visibleCount >= rows.length;
+  }
+
+  addButton.addEventListener('click', () => {
+    visibleCount += 1;
+    updateOptions();
+    rows[visibleCount - 1].querySelector('input:not([type])').focus();
+  });
+  updateOptions();
+});
+
 const navigation = document.querySelector('.mobile-nav');
 const printReview = document.querySelector('[data-print-review]');
 if (printReview) {

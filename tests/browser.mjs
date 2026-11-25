@@ -200,6 +200,11 @@ try {
   assert.match(admin.url(), /\/admin\/kuis\/\d+\?saved=1$/);
   await admin.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
   const compose = 'details[open] form:has([value="question-save"])';
+  assert.equal(await admin.$eval(compose + ' [name="c"]', input => input.closest('[data-option-row]').hidden), true);
+  await admin.click(compose + ' [data-add-option]');
+  assert.equal(await admin.$eval(compose + ' [name="c"]', input => input.closest('[data-option-row]').hidden), false);
+  assert.equal(await admin.$eval(':focus', input => input.name), 'c');
+  await admin.type(compose + ' [name="c"]', '4');
   await admin.type(compose + ' [name="stem"]', 'Apa contoh bilangan genap?');
   await admin.type(compose + ' [name="a"]', '2');
   await admin.type(compose + ' [name="b"]', '3');
