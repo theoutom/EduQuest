@@ -10,7 +10,20 @@ const teacherCreated = await admin.visit('/admin/guru', {
   action: 'create', username: 'guru-baru', name: 'Guru Baru', password: process.env.EDUQUEST_TEST_PASSWORD,
 });
 assert.equal(teacherCreated.response.status, 303);
-assert.match((await admin.visit('/admin/guru')).text, /Guru Baru/);
+const teachersPage = await admin.visit('/admin/guru');
+assert.match(teachersPage.text, /Guru Baru/);
+const newTeacherId = teachersPage.text.match(/Guru Baru[\s\S]*?action="\/admin\/guru\/(\d+)"/)[1];
+const newTeacher = new Browser();
+await newTeacher.login('guru-baru');
+assert.equal((await newTeacher.visit('/guru')).response.status, 200);
+const replacementPassword = 'kata-sandi-uji-guru-baru-2026';
+assert.equal((await admin.visit('/admin/guru/' + newTeacherId, { action: 'reset', password: replacementPassword })).response.status, 303);
+assert.equal((await newTeacher.visit('/guru')).response.headers.get('location'), '/masuk');
+const loginAfterReset = new Browser();
+await loginAfterReset.visit('/masuk');
+assert.equal((await loginAfterReset.visit('/masuk', { username: 'guru-baru', password: process.env.EDUQUEST_TEST_PASSWORD })).response.status, 401);
+assert.equal((await loginAfterReset.visit('/masuk', { username: 'guru-baru', password: replacementPassword })).response.status, 303);
+assert.equal((await loginAfterReset.visit('/guru')).response.status, 200);
 assert.equal((await student.visit('/admin/kelas')).response.status, 403);
 assert.equal((await admin.visit('/admin/kelas')).response.status, 200);
 const created = await admin.visit('/admin/kelas', { action: 'create', name: 'XI-PPLG-B', year: '2026/2027' });
