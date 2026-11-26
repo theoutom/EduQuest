@@ -24,3 +24,9 @@ Tanggal analisis: 26 November 2026. Dasar: branch kelas dan gamifikasi serta per
 ## Kriteria selesai setiap fitur
 
 Fitur dianggap siap bila alur utama dan kegagalan diuji dari antarmuka dengan akun yang tepat, data tersimpan dan terbaca kembali di Supabase pilot, batas kelas dan peran diuji di server, umpan balik pengguna jelas, tidak ada tombol kosong, dan hasil pengujian/risiko tercatat. Demo publik dan pilot tetap memakai database terpisah; kredensial provider hanya di server.
+
+## Temuan pemeriksaan langsung Preview pilot
+
+Pada 26 November 2026, akun guru berhasil melihat kedua kelas demo, kedua kuis khusus kelas, dan nilai sintetis 100/100 untuk kelas A. Halaman cetak soal menampilkan versi terbit, soal, kunci dan pembahasan; halaman cetak nilai menunjukkan hasil kelas A yang dipilih. Pemeriksaan database menunjukkan tiap siswa demo hanya cocok dengan sasaran kelas kuisnya sendiri. Ini belum menggantikan uji langsung dengan akun siswa.
+
+Navigasi pada sesi pemeriksaan terasa lambat dan beberapa operasi browser melewati batas waktu alat. Catatan Vercel memperlihatkan inisialisasi container juga untuk permintaan aset statis; hal tersebut merupakan petunjuk untuk investigasi, bukan bukti tunggal penyebab lambat. Ukur durasi request aplikasi dan aset, jumlah koneksi PostgreSQL serta lokasi region sebelum memilih perbaikan; jangan cache halaman, nilai, atau jawaban privat secara publik. Pengujian unduhan Excel dari Preview melalui alat browser dibatalkan; file yang dihasilkan di lingkungan uji lolos pemeriksaan ZIP dan struktur XML, tetapi unduhan Preview dan pembukaan di aplikasi spreadsheet belum terkonfirmasi.
