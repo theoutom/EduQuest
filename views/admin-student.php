@@ -29,7 +29,7 @@
             <button class="button button-danger" type="submit">Nonaktifkan akun</button>
         </form>
         <?php endif; ?>
-        <?php if ($item['attempts'] === 0 && $item['mentor_sessions'] === 0): ?>
+        <?php if ($item['attempts'] === 0 && $item['mentor_sessions'] === 0 && $item['minigame_attempts'] === 0 && $item['pvp_matches'] === 0): ?>
         <form class="admin-form" method="post" action="<?= h($endpoint) ?>">
             <?php csrfField($csrf); ?>
             <input type="hidden" name="action" value="delete">

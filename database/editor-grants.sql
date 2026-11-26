@@ -34,6 +34,16 @@ GRANT INSERT (mentor_id, starts_at, ends_at), UPDATE (enabled) ON eduquest.mento
 GRANT UPDATE (status, message, meeting_url) ON eduquest.mentor_bookings TO __RUNTIME_ROLE__;
 GRANT USAGE ON SEQUENCE eduquest.mentors_id_seq, eduquest.mentor_slots_id_seq TO __RUNTIME_ROLE__;
 GRANT SELECT, INSERT, DELETE ON eduquest.daily_challenges TO __RUNTIME_ROLE__;
+GRANT SELECT, INSERT ON eduquest.quests, eduquest.quest_classes TO __RUNTIME_ROLE__;
+GRANT UPDATE (archived_at) ON eduquest.quests TO __RUNTIME_ROLE__;
+GRANT USAGE ON SEQUENCE eduquest.quests_id_seq TO __RUNTIME_ROLE__;
+GRANT SELECT, INSERT ON eduquest.minigames, eduquest.minigame_classes, eduquest.minigame_steps TO __RUNTIME_ROLE__;
+GRANT UPDATE (archived_at) ON eduquest.minigames TO __RUNTIME_ROLE__;
+GRANT USAGE ON SEQUENCE eduquest.minigames_id_seq TO __RUNTIME_ROLE__;
+GRANT SELECT, INSERT ON eduquest.mastery_nodes, eduquest.mastery_rules, eduquest.mastery_prerequisites TO __RUNTIME_ROLE__;
+GRANT USAGE ON SEQUENCE eduquest.mastery_nodes_id_seq, eduquest.mastery_rules_id_seq TO __RUNTIME_ROLE__;
+GRANT SELECT (student_id) ON eduquest.minigame_attempts TO __RUNTIME_ROLE__;
+GRANT SELECT (challenger_id, opponent_id) ON eduquest.pvp_matches TO __RUNTIME_ROLE__;
 GRANT UPDATE (quiz_id) ON eduquest.daily_challenges TO __RUNTIME_ROLE__;
 GRANT SELECT, DELETE ON eduquest.exam_schedule TO __RUNTIME_ROLE__;
 GRANT INSERT (title, location, note, starts_at, ends_at),

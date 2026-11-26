@@ -7,7 +7,7 @@ GRANT SELECT ON eduquest.attempts, eduquest.answers TO __RUNTIME_ROLE__;
 GRANT INSERT (student_id, quiz_id, version_id, started_at, deadline) ON eduquest.attempts TO __RUNTIME_ROLE__;
 GRANT INSERT (attempt_id, version_id, question_id, option_id, doubtful) ON eduquest.answers TO __RUNTIME_ROLE__;
 GRANT UPDATE (finished_at, score) ON eduquest.attempts TO __RUNTIME_ROLE__;
-GRANT UPDATE (option_id, doubtful) ON eduquest.answers TO __RUNTIME_ROLE__;
+GRANT UPDATE (option_id, doubtful, answer_updated_at) ON eduquest.answers TO __RUNTIME_ROLE__;
 GRANT SELECT, DELETE ON eduquest.sessions TO __RUNTIME_ROLE__;
 GRANT INSERT (token_hash, student_id, expires_at, issued_role) ON eduquest.sessions TO __RUNTIME_ROLE__;
 GRANT UPDATE (last_seen_at) ON eduquest.sessions TO __RUNTIME_ROLE__;
@@ -37,4 +37,17 @@ GRANT SELECT, INSERT, DELETE ON eduquest.quiz_bookmarks TO __RUNTIME_ROLE__;
 GRANT SELECT, INSERT ON eduquest.student_profiles TO __RUNTIME_ROLE__;
 GRANT UPDATE (school, class_name, program, interests, bio) ON eduquest.student_profiles TO __RUNTIME_ROLE__;
 GRANT SELECT ON eduquest.daily_challenges TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.quests, eduquest.quest_classes, eduquest.quest_rewards, eduquest.quest_events TO __RUNTIME_ROLE__;
+GRANT INSERT ON eduquest.quest_rewards, eduquest.quest_events TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.minigames, eduquest.minigame_classes, eduquest.minigame_steps, eduquest.minigame_attempts, eduquest.minigame_rewards TO __RUNTIME_ROLE__;
+GRANT INSERT ON eduquest.minigame_attempts, eduquest.minigame_rewards TO __RUNTIME_ROLE__;
+GRANT USAGE ON SEQUENCE eduquest.minigame_attempts_id_seq TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.pvp_matches, eduquest.pvp_answers TO __RUNTIME_ROLE__;
+GRANT INSERT (class_id, quiz_id, version_id, challenger_id, opponent_id),
+    UPDATE (state, started_at, deadline, challenger_finished_at, opponent_finished_at) ON eduquest.pvp_matches TO __RUNTIME_ROLE__;
+GRANT INSERT (match_id, student_id, question_id, option_id) ON eduquest.pvp_answers TO __RUNTIME_ROLE__;
+GRANT USAGE ON SEQUENCE eduquest.pvp_matches_id_seq TO __RUNTIME_ROLE__;
+GRANT SELECT ON eduquest.mastery_nodes, eduquest.mastery_rules, eduquest.mastery_prerequisites,
+    eduquest.mastery_awards, eduquest.mastery_processed_attempts TO __RUNTIME_ROLE__;
+GRANT INSERT ON eduquest.mastery_awards, eduquest.mastery_processed_attempts TO __RUNTIME_ROLE__;
 GRANT SELECT ON eduquest.published_exam_schedule TO __RUNTIME_ROLE__;

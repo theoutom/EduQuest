@@ -329,7 +329,9 @@ final class AdminStore
         return $this->one(<<<'SQL'
             SELECT id, username, name, enabled,
                    (SELECT count(*) FROM eduquest.attempts WHERE student_id = u.id)::int AS attempts,
-                   (SELECT count(*) FROM eduquest.mentor_bookings WHERE student_id = u.id)::int AS mentor_sessions
+                   (SELECT count(*) FROM eduquest.mentor_bookings WHERE student_id = u.id)::int AS mentor_sessions,
+                   (SELECT count(*) FROM eduquest.minigame_attempts WHERE student_id = u.id)::int AS minigame_attempts,
+                   (SELECT count(*) FROM eduquest.pvp_matches WHERE challenger_id = u.id OR opponent_id = u.id)::int AS pvp_matches
             FROM eduquest.students u WHERE role = 'student' AND id = ?
             SQL, [$id], 'Akun siswa');
     }
@@ -359,8 +361,8 @@ final class AdminStore
             }
             if ($action === 'delete') {
                 $this->confirmed($input, function () use ($student, $id): void {
-                    if ($student['attempts'] > 0 || $student['mentor_sessions'] > 0) {
-                        throw new QuizProblem(409, 'Akun yang memiliki riwayat kuis atau sesi mentor hanya bisa dinonaktifkan.');
+                    if ($student['attempts'] > 0 || $student['mentor_sessions'] > 0 || $student['minigame_attempts'] > 0 || $student['pvp_matches'] > 0) {
+                        throw new QuizProblem(409, 'Akun dengan riwayat belajar atau permainan hanya bisa dinonaktifkan.');
                     }
                     $this->query("DELETE FROM eduquest.students WHERE id = ? AND role = 'student'", [$id]);
                 });

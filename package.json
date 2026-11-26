@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/copy-fonts.mjs && tailwindcss -i assets/app.css -o public/assets/app.css --minify",
-    "test": "node tests/run.mjs"
+    "test": "node tests/run.mjs",
+    "test:gamification": "node tests/gamification.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/inter": "5.2.8",

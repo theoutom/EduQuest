@@ -45,6 +45,36 @@
         <a class="button button-quiet" href="/profil">Lihat riwayat</a>
     </section>
 </div>
+<section class="panel dashboard-activity" aria-labelledby="quest-title" id="quest-list">
+    <h2 id="quest-title">Quest aktif</h2>
+    <p>Total XP: <strong><?= h($questXp + $minigameXp) ?> XP</strong></p>
+    <p>Total XP quest: <strong><?= h($questXp) ?> XP</strong></p>
+    <?php if (!publicDemo()): ?><p>XP permainan: <strong><?= h($minigameXp) ?> XP</strong> · <a href="/minigame">Main Susun Langkah</a></p><?php endif; ?>
+    <?php if (!$quests): ?>
+        <p class="muted">Belum ada quest aktif untukmu.</p>
+    <?php else: ?>
+        <ul class="history">
+        <?php foreach ($quests as $quest): ?>
+            <li>
+                <div>
+                    <strong><?= h($quest['title']) ?></strong>
+                    <p><?= $quest['kind'] === 'review' ? 'Baca dan konfirmasi pembahasan' : ($quest['kind'] === 'answers' ? 'Jawab soal dan kumpulkan kuis' : 'Selesaikan kuis') ?></p>
+                    <p>Progres <?= h(min((int) $quest['progress'], (int) $quest['target'])) ?>/<?= h($quest['target']) ?> · <?= h($quest['xp']) ?> XP</p>
+                    <p><?= (int) $quest['awarded_xp'] > 0 ? 'Selesai' : 'Berakhir ' . h(localDate($quest['ends_at'])) ?></p>
+                    <?php if (!$quest['target_reachable']): ?>
+                        <p>Aktivitas yang tersisa tidak cukup untuk mencapai target. Minta guru memeriksa quest.</p>
+                    <?php endif; ?>
+                </div>
+                <?php if ($quest['kind'] === 'review' && $quest['result_id'] !== null): ?>
+                    <a href="/hasil/<?= h($quest['result_id']) ?>">Buka pembahasan</a>
+                <?php else: ?>
+                    <a href="/kuis/<?= h($quest['quiz_slug']) ?>">Lihat kuis</a>
+                <?php endif; ?>
+            </li>
+        <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</section>
 <section class="panel dashboard-activity" aria-labelledby="daily-title">
     <h2 id="daily-title">Tantangan harian</h2>
     <?php if ($challenge === null): ?>

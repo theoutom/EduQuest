@@ -60,3 +60,11 @@
     <?php endforeach; ?>
     </div>
 </section>
+<?php if (!$print && !publicDemo()): ?>
+<section class="panel review-section">
+    <h2>Selesai membaca pembahasan?</h2>
+    <p>Konfirmasi ini mencatat progres untuk quest pembahasan yang sedang aktif.</p>
+    <?php if ($reviewConfirmed): ?><p>Konfirmasi tersimpan.</p><?php endif; ?>
+    <form method="post" action="/hasil/<?= h($review['id']) ?>/selesai-baca"><?php csrfField($csrf); ?><button class="button button-quiet" type="submit">Saya sudah membaca</button></form>
+</section>
+<?php endif; ?>

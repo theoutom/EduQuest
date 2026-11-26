@@ -183,7 +183,9 @@ final class QuizService
                 INSERT INTO eduquest.answers (attempt_id, version_id, question_id, option_id, doubtful)
                 VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT (attempt_id, question_id) DO UPDATE
-                SET option_id = EXCLUDED.option_id, doubtful = EXCLUDED.doubtful
+                SET answer_updated_at = CASE WHEN answers.option_id IS DISTINCT FROM EXCLUDED.option_id
+                    THEN clock_timestamp() ELSE answers.answer_updated_at END,
+                    option_id = EXCLUDED.option_id, doubtful = EXCLUDED.doubtful
                 SQL, [$id, $attempt['version_id'], $question, $option, $doubtful ? 'true' : 'false']);
             $expired = $this->query('SELECT clock_timestamp() >= CAST(? AS timestamptz)', [$attempt['deadline']])->fetchColumn();
             if ($expired) {
@@ -235,6 +237,20 @@ final class QuizService
                 WHERE q.version_id = ? ORDER BY q.position
                 SQL, [$attempt['version_id'], $id, $attempt['version_id']])->fetchAll();
             return $this->summary($attempt) + $attempt + ['questions' => $questions];
+        });
+    }
+
+    public function confirmReview(int $student, int $id): void
+    {
+        $this->transaction(function () use ($student, $id): void {
+            $attempt = $this->lockedAttempt($student, $id);
+            $this->requireActiveAccess($student, $attempt);
+            $attempt = $this->settle($attempt);
+            if ($attempt['score'] === null) {
+                throw new QuizProblem(409, 'Pembahasan tersedia setelah kuis dikumpulkan.');
+            }
+            require_once __DIR__ . '/QuestService.php';
+            (new QuestService($this->db))->recordAttempt($id, 'review');
         });
     }
 
@@ -403,6 +419,11 @@ final class QuizService
             UPDATE eduquest.attempts SET finished_at = LEAST(CAST(? AS timestamptz), deadline), score = ?
             WHERE id = ? RETURNING finished_at, score
             SQL, [$clock['now'], $score, $attempt['id']])->fetch();
+        require_once __DIR__ . '/QuestService.php';
+        (new QuestService($this->db))->recordAttempt((int) $attempt['id']);
+        (new QuestService($this->db))->recordAttempt((int) $attempt['id'], 'answers');
+        require_once __DIR__ . '/MasteryService.php';
+        (new MasteryService($this->db))->recordAttempt((int) $attempt['id']);
         return array_replace($attempt, $final);
     }
 

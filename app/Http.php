@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 final class Http
 {
+    use MinigameHttp;
     private const SESSION = 'eduquest_session';
     private const CSRF = 'eduquest_csrf';
     private const LEVELS = ['dasar' => 'Dasar', 'menengah' => 'Menengah', 'lanjutan' => 'Lanjutan'];
@@ -70,6 +71,18 @@ final class Http
                 $this->page('teacher-home', 'Ruang Guru', ['classes' => (new ClassService($this->db))->teacherClasses($student)]);
                 return;
             }
+            if ($this->path === '/guru/quest') {
+                $this->quests($student, true);
+                return;
+            }
+            if ($this->path === '/guru/minigame') {
+                $this->minigameManage($student, true);
+                return;
+            }
+            if ($this->path === '/guru/mastery') {
+                $this->masteryManage($student, true);
+                return;
+            }
             if (preg_match('~^/guru/kuis(?:/(\d{1,10}))?$~D', $this->path, $match)) {
                 $this->teacherQuiz($student, isset($match[1]) ? $this->positive($match[1], 404) : null);
                 return;
@@ -79,6 +92,18 @@ final class Http
         if ($this->path === '/admin' || str_starts_with($this->path, '/admin/')) {
             if ($this->student['role'] !== 'admin') {
                 throw new QuizProblem(403, 'Halaman ini hanya tersedia untuk admin.');
+            }
+            if ($this->path === '/admin/quest') {
+                $this->quests($student, false);
+                return;
+            }
+            if ($this->path === '/admin/minigame') {
+                $this->minigameManage($student, false);
+                return;
+            }
+            if ($this->path === '/admin/mastery') {
+                $this->masteryManage($student, false);
+                return;
             }
             if (preg_match('~^/admin/kelas(?:/(\d{1,10}))?$~D', $this->path, $match)) {
                 $this->classes(isset($match[1]) ? $this->positive($match[1], 404) : null);
@@ -110,6 +135,18 @@ final class Http
             }
             throw new QuizProblem(403, 'Area ini hanya tersedia untuk siswa.');
         }
+        if ($this->minigameStudent($student)) { return; }
+        if ($this->path === '/mastery' && $this->method === 'GET') {
+            $this->page('mastery-tree', 'Mastery Tree', ['items' => (new MasteryService($this->db))->visible($student)]);
+            return;
+        }
+        if (preg_match('~^/arena(?:/(\d{1,10}))?$~D', $this->path, $match)) {
+            $id = isset($match[1]) ? $this->positive($match[1], 404) : null;
+            (new PvpController($this->db))->run($student, $id, $this->method, $_POST,
+                fn ($view, $title, $data) => $this->page($view, $title, $data),
+                fn ($url) => $this->redirect($url));
+            return;
+        }
         if ($this->method === 'GET' && $this->path === '/') {
             $items = $this->quiz->catalog($student);
             $active = array_values(array_filter($items, static fn (array $item): bool => $item['active_id'] !== null));
@@ -119,6 +156,9 @@ final class Http
                 'progress' => $this->quiz->progress($student),
                 'streak' => $this->quiz->streak($student),
                 'challenge' => $this->quiz->dailyChallenge($student, $items),
+                'quests' => (new QuestService($this->db))->visible($student),
+                'questXp' => (new QuestService($this->db))->totalXp($student),
+                'minigameXp' => (new MinigameService($this->db))->totalXp($student),
                 'exams' => publicDemo() ? [] : $this->quiz->upcomingExams(3, 0, $student),
                 'activity' => $this->quiz->weeklyActivity($student),
                 'mentor' => publicDemo() ? null : (new Mentor($this->db))->nextSession($student),
@@ -176,12 +216,19 @@ final class Http
             $this->exercise($student, $id, $match[2] ?? '');
             return;
         }
+        if ($this->method === 'POST' && preg_match('~^/hasil/(\d{1,10})/selesai-baca$~D', $this->path, $match)) {
+            $id = $this->positive($match[1], 404);
+            $this->quiz->confirmReview($student, $id);
+            $this->redirect("/hasil/$id?dibaca=1");
+            return;
+        }
         if ($this->method === 'GET' && preg_match('~^/hasil/(\d{1,10})$~D', $this->path, $match)) {
             $review = $this->quiz->review($student, $this->positive($match[1], 404));
             $print = $this->input($_GET, 'cetak') === '1';
             $filter = $print ? 'semua' : $this->input($_GET, 'status', 'semua');
             $this->page('review', 'Hasil & Pembahasan', compact('review', 'print') + [
                 'filter' => isset(self::FILTERS[$filter]) ? $filter : 'semua', 'labels' => self::FILTERS,
+                'reviewConfirmed' => $this->input($_GET, 'dibaca') === '1',
             ]);
             return;
         }
@@ -581,6 +628,86 @@ final class Http
             }
             $this->page('admin-quiz', 'Editor Kuis', $data + $page);
         }
+    }
+
+    private function quests(int $actor, bool $teacher): void
+    {
+        $editor = adminDatabase();
+        $service = new QuestService($editor);
+        $base = $teacher ? '/guru/quest' : '/admin/quest';
+        $message = '';
+        $submitted = [];
+        if ($this->method === 'POST') {
+            try {
+                $action = $this->input($_POST, 'action');
+                if ($action === 'archive') {
+                    $service->archive($actor, $this->positive($this->input($_POST, 'quest_id')));
+                } elseif ($action === 'create') {
+                    $service->create($actor, $_POST);
+                } else {
+                    throw new QuizProblem(422, 'Tindakan quest tidak tersedia.');
+                }
+                $this->redirect($base . '?saved=1');
+                return;
+            } catch (QuizProblem $problem) {
+                if (!in_array($problem->status, [403, 422], true)) { throw $problem; }
+                http_response_code($problem->status);
+                $message = $problem->getMessage();
+                $submitted = $_POST;
+            }
+        }
+        $classes = new ClassService($editor);
+        $quizStore = new AdminStore($editor, $actor);
+        $query = $editor->prepare(<<<'SQL'
+            SELECT DISTINCT q.id, q.title, q.starts_at, q.ends_at, q.target, q.xp, q.created_by, q.archived_at
+            FROM eduquest.quests q
+            WHERE NOT CAST(? AS boolean) OR EXISTS (
+                SELECT 1 FROM eduquest.quest_classes qc
+                JOIN eduquest.class_teachers ct ON ct.class_id = qc.class_id
+                JOIN eduquest.classes c ON c.id = ct.class_id AND c.archived_at IS NULL
+                WHERE qc.quest_id = q.id AND ct.teacher_id = ?
+            ) ORDER BY q.starts_at DESC LIMIT 100
+            SQL);
+        $query->execute([$teacher ? 'true' : 'false', $actor]);
+        $this->page('quest-admin', 'Kelola Quest', [
+            'base' => $base, 'teacher' => $teacher, 'actor' => $actor, 'items' => $query->fetchAll(),
+            'classes' => $teacher ? $classes->teacherClasses($actor) : $classes->list(),
+            'quizzes' => $teacher ? $classes->teacherQuizzes($actor) : $quizStore->quizzes(),
+            'message' => $message, 'submitted' => $submitted,
+            'saved' => $this->method === 'GET' && $this->input($_GET, 'saved') === '1',
+        ]);
+    }
+
+    private function masteryManage(int $actor, bool $teacher): void
+    {
+        $editor = adminDatabase();
+        $service = new MasteryService($editor);
+        $base = $teacher ? '/guru/mastery' : '/admin/mastery';
+        $message = '';
+        $submitted = [];
+        if ($this->method === 'POST') {
+            try {
+                if ($this->input($_POST, 'action') !== 'save') { throw new QuizProblem(422, 'Tindakan tidak tersedia.'); }
+                $service->save($actor, $_POST);
+                $this->redirect($base . '?saved=1');
+                return;
+            } catch (QuizProblem $problem) {
+                if (!in_array($problem->status, [403, 422], true)) { throw $problem; }
+                http_response_code($problem->status);
+                $message = $problem->getMessage();
+                $submitted = $_POST;
+            }
+        }
+        $classes = new ClassService($editor);
+        $store = new AdminStore($editor, $actor);
+        $this->page('mastery-admin', 'Kelola Mastery Tree', [
+            'base' => $base, 'teacher' => $teacher, 'items' => $service->manage($actor, $teacher),
+            'prerequisiteOptions' => $service->prerequisiteOptions($actor),
+            'classes' => $teacher ? $classes->teacherClasses($actor) : $classes->list(),
+            'quizzes' => $teacher ? $classes->teacherQuizzes($actor) : $store->quizzes(),
+            'topics' => $store->topics(), 'message' => $message, 'submitted' => $submitted,
+            'saved' => $this->method === 'GET' && $this->input($_GET, 'saved') === '1',
+        ]);
     }
 
     private function community(int $actor, string $page): void

@@ -15,6 +15,12 @@ header("Content-Security-Policy: default-src 'self'; base-uri 'none'; form-actio
 $root = dirname(__DIR__);
 require "$root/app/database.php";
 require "$root/app/QuizService.php";
+require "$root/app/QuestService.php";
+require "$root/app/MinigameService.php";
+require "$root/app/MinigameHttp.php";
+require "$root/app/PvpService.php";
+require "$root/app/PvpController.php";
+require "$root/app/MasteryService.php";
 require "$root/app/Auth.php";
 require "$root/app/AdminStore.php";
 require "$root/app/ClassService.php";

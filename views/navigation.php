@@ -17,15 +17,20 @@
     ] : ($isTeacher ? [
         '/guru' => ['Ruang Guru', 'home'],
         '/guru/kuis' => ['Kuis Saya', 'quiz'],
+        '/guru/minigame' => ['Susun Langkah', 'quiz'],
+        '/guru/mastery' => ['Mastery Tree', 'quiz'],
     ] : [
         '/' => ['Dashboard', 'home'],
         '/kuis' => ['Daftar Kuis', 'quiz'],
+        '/minigame' => ['Susun Langkah', 'quiz'],
+        '/arena' => ['Arena Kuis', 'quiz'],
+        '/mastery' => ['Mastery Tree', 'quiz'],
         '/jadwal' => ['Jadwal Ujian', 'quiz'],
         '/komunitas' => ['Bank Soal Komunitas', 'community'],
         '/mentor' => ['Cari Mentor', 'mentor'],
         '/profil' => ['Profil', 'profile'],
     ])) as $href => [$label, $icon]): ?>
-        <?php if (publicDemo() && in_array($href, ['/jadwal', '/komunitas', '/mentor'], true)) continue; ?>
+        <?php if (publicDemo() && in_array($href, ['/jadwal', '/komunitas', '/mentor', '/minigame', '/arena', '/mastery'], true)) continue; ?>
         <a href="<?= h($href) ?>" <?= navCurrent($path, $href) ? 'aria-current="page"' : '' ?>>
             <span class="nav-icon icon-<?= h($icon) ?>" aria-hidden="true"></span><?= h($label) ?>
         </a>

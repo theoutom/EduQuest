@@ -11,6 +11,9 @@
     <a class="button button-quiet" href="/admin/komunitas">Moderasi komunitas</a>
     <a class="button button-quiet" href="/admin/mentor">Kelola mentor</a>
     <a class="button button-quiet" href="/admin/tantangan">Jadwalkan tantangan</a>
+    <a class="button button-quiet" href="/admin/quest">Kelola quest</a>
+    <a class="button button-quiet" href="/admin/minigame">Kelola Susun Langkah</a>
+    <a class="button button-quiet" href="/admin/mastery">Kelola Mastery Tree</a>
     <a class="button button-quiet" href="/admin/jadwal">Kelola jadwal ujian</a>
     <a class="button button-quiet" href="/admin/riwayat">Lihat riwayat</a>
 </nav>

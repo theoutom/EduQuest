@@ -50,6 +50,7 @@ try {
   assert.match(await page.title(), /Dashboard/);
   assert.equal(await page.$$eval('.activity-list time', days => days.length), 7);
   assert.equal(await page.$eval('#daily-title', node => node.textContent), 'Tantangan harian');
+  assert.match(await page.$eval('#quest-list', node => node.textContent), /Belum ada quest aktif/);
   await snapshot('dashboard-desktop');
 
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
@@ -189,6 +190,17 @@ try {
   await admin.type('[name="username"]', 'operator');
   await admin.type('[name="password"]', process.env.EDUQUEST_TEST_PASSWORD);
   await Promise.all([admin.waitForNavigation(), admin.click('form button[type="submit"]')]);
+  await admin.goto(base + '/admin/quest');
+  assert.match(await admin.$eval('h1', node => node.textContent), /Quest/);
+  await admin.type('[name="title"]', 'Quest uji browser');
+  await admin.select('[name="quiz_id"]', '1');
+  await admin.$eval('[name="starts_at"]', input => { input.value = '2030-01-01T08:00'; });
+  await admin.$eval('[name="ends_at"]', input => { input.value = '2030-01-02T08:00'; });
+  await admin.type('[name="target"]', '1');
+  await admin.type('[name="xp"]', '20');
+  await Promise.all([admin.waitForNavigation(), admin.click('form[action="/admin/quest"] button[type="submit"]')]);
+  assert.match(await admin.$eval('main', node => node.textContent), /Quest uji browser/);
+  await admin.goto(base + '/admin');
   await Promise.all([admin.waitForNavigation(), admin.click('main a[href="/admin/kuis"]')]);
   const addQuiz = 'form[action="/admin/kuis"]';
   await admin.type(addQuiz + ' [name="slug"]', 'editor-browser');
