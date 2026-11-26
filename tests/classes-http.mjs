@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { Browser } from './http-client.mjs';
 
 const admin = new Browser();
@@ -37,6 +38,7 @@ assert.doesNotMatch((await teacher.visit('/guru')).text, /XI-PPLG-B/);
 const page = await admin.visit(classPath);
 const teacherId = page.text.match(/Guru Uji[\s\S]*?name="teacher_id" value="(\d+)"/)[1];
 assert.equal((await admin.visit(classPath, { action: 'assign-teacher', teacher_id: teacherId })).response.status, 303);
+assert.equal((await admin.visit(classPath, { action: 'assign-teacher', teacher_id: newTeacherId })).response.status, 303);
 assert.match((await teacher.visit('/guru')).text, /XI-PPLG-B/);
 assert.equal((await teacher.visit(classPath)).response.status, 403);
 assert.equal((await teacher.visit('/guru/kuis')).response.status, 200);
@@ -52,6 +54,32 @@ assert.equal((await teacher.visit('/guru/kuis/1')).response.status, 404);
 const draft = (await teacher.visit(teacherQuizPath)).text.match(/name="draft_id" value="(\d+)"/)[1];
 assert.equal((await teacher.visit(teacherQuizPath, { action: 'question-save', draft_id: draft, stem: 'Berapa 2 + 2?', a: '4', b: '5', correct: 'a', explanation: 'Hasilnya empat.' })).response.status, 303);
 assert.equal((await teacher.visit(teacherQuizPath, { action: 'publish', draft_id: draft })).response.status, 303);
+const questionCsv = await teacher.visit(teacherQuizPath + '/ekspor/soal/csv');
+assert.equal(questionCsv.response.status, 200);
+assert.match(questionCsv.response.headers.get('content-type'), /text\/csv/);
+assert.match(questionCsv.text, /Berapa 2 \+ 2\?/);
+const questionXlsx = await fetch(new URL(teacherQuizPath + '/ekspor/soal/xlsx', process.env.EDUQUEST_TEST_URL), {
+  headers: { cookie: [...teacher.cookies].map(pair => pair.join('=')).join('; ') },
+});
+assert.equal(questionXlsx.status, 200);
+assert.match(questionXlsx.headers.get('content-type'), /spreadsheetml/);
+const workbookBytes = Buffer.from(await questionXlsx.arrayBuffer());
+assert.equal(workbookBytes.subarray(0, 4).toString('hex'), '504b0304');
+const worksheet = execFileSync(process.env.EDUQUEST_PHP ?? 'php', ['-r', `
+  $file = tempnam(sys_get_temp_dir(), 'eduquest-test-');
+  file_put_contents($file, stream_get_contents(STDIN));
+  $zip = new ZipArchive();
+  if ($zip->open($file) !== true) { exit(1); }
+  $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
+  $zip->close(); unlink($file);
+  if ($xml === false) { exit(1); }
+  echo $xml;
+`], { input: workbookBytes, encoding: 'utf8' });
+assert.match(worksheet, /Berapa 2 \+ 2\?/);
+assert.match(worksheet, /Hasilnya empat/);
+assert.match((await teacher.visit(teacherQuizPath + '/ekspor/soal/cetak')).text, /Hasilnya empat/);
+assert.equal((await student.visit(teacherQuizPath + '/ekspor/soal/csv')).response.status, 404);
+assert.equal((await loginAfterReset.visit(teacherQuizPath + '/ekspor/soal/csv')).response.status, 404);
 const questTime = offset => new Date(Date.now() + (7 + offset) * 3600000).toISOString().slice(0, 16);
 const questInput = { action: 'create', title: 'Quest khusus B', quiz_id: teacherQuizPath.split('/').at(-1), class_id: classPath.split('/').at(-1), starts_at: questTime(-1), ends_at: questTime(1), target: '1', xp: '30' };
 assert.equal((await teacher.visit('/guru/quest')).response.status, 200);
@@ -84,9 +112,16 @@ const dashboardAfterArchive = (await student.visit('/')).text;
 assert.doesNotMatch(dashboardAfterArchive, /Quest khusus B/);
 assert.match(dashboardAfterArchive, /Total XP quest:[\s\S]*80 XP/);
 assert.match((await teacher.visit(teacherQuizPath)).text, /Satrio/);
+const resultsCsv = await teacher.visit(teacherQuizPath + '/ekspor/nilai/csv');
+assert.equal(resultsCsv.response.status, 200);
+assert.match(resultsCsv.text, /Satrio/);
+assert.match((await teacher.visit(teacherQuizPath + '/ekspor/nilai/csv?kelas=' + classPath.split('/').at(-1))).text, /Satrio/);
+assert.doesNotMatch((await teacher.visit(teacherQuizPath + '/ekspor/nilai/csv?kelas=2147483647')).text, /Satrio/);
+assert.match((await teacher.visit(teacherQuizPath + '/ekspor/nilai/cetak')).text, /Satrio/);
 assert.equal((await admin.visit(classPath, { action: 'remove', student_id: '1' })).response.status, 303);
 assert.doesNotMatch((await student.visit('/')).text, /Quest khusus B/);
 assert.doesNotMatch((await teacher.visit(teacherQuizPath)).text, /Satrio/);
+assert.doesNotMatch((await teacher.visit(teacherQuizPath + '/ekspor/nilai/csv')).text, /Satrio/);
 const quizPath = '/admin/kuis/1';
 assert.equal((await admin.visit(quizPath)).response.status, 200);
 const classId = classPath.split('/').at(-1);

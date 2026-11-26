@@ -42,6 +42,7 @@ try {
 }
 $teacher = (int) $db->query("INSERT INTO eduquest.students (username, name, role, enabled, password_hash) VALUES ('guru-lock', 'Guru Lock', 'teacher', false, NULL) RETURNING id")->fetchColumn();
 $db->exec("INSERT INTO eduquest.class_teachers (class_id, teacher_id) VALUES ($b, $teacher)");
+expectClassProblem(fn () => $classes->teacherResults($teacher, 1), 404);
 $db->beginTransaction();
 $db->query('SELECT pg_advisory_xact_lock_shared(476152004)');
 try {

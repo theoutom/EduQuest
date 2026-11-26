@@ -12,6 +12,19 @@ $pending = formValue($submitted, 'action');
         <?php if (!empty($teacherEditor)): ?>
         <section class="panel">
             <h2>Hasil siswa kelas saya</h2>
+            <form class="admin-form" method="get" action="<?= h($endpoint) ?>/ekspor/nilai/xlsx">
+                <label class="field">Kelas untuk ekspor nilai
+                    <select name="kelas"><option value="">Semua kelas saya</option>
+                    <?php foreach ($classes as $class): ?>
+                    <?php if (!in_array((int) $class['id'], $quizClasses, true)) continue; ?>
+                    <option value="<?= h($class['id']) ?>"><?= h($class['name']) ?> · <?= h($class['academic_year']) ?></option>
+                    <?php endforeach; ?></select>
+                </label>
+                <button class="button button-quiet" type="submit">Unduh nilai Excel</button>
+                <button class="button button-quiet" type="submit" formaction="<?= h($endpoint) ?>/ekspor/nilai/cetak">Cetak atau simpan nilai sebagai PDF</button>
+            </form>
+            <p><a href="<?= h($endpoint) ?>/ekspor/soal/xlsx">Unduh soal Excel</a> · <a href="<?= h($endpoint) ?>/ekspor/soal/cetak">Cetak atau simpan soal sebagai PDF</a></p>
+            <p class="muted">Ekspor soal memakai versi yang sedang ditampilkan, termasuk kunci dan pembahasan.</p>
             <?php if (!$teacherResults): ?><p>Belum ada hasil.</p><?php endif; ?>
             <ul class="admin-list">
                 <?php foreach ($teacherResults as $result): ?>

@@ -6,7 +6,7 @@ EduQuest adalah aplikasi latihan untuk siswa SMA dan SMK. Alpha mencakup kuis, p
 
 ## Menjalankan secara lokal
 
-Siapkan PHP 8.2 atau lebih baru dengan `pdo_pgsql`, `mbstring`, dan dukungan Argon2id, PostgreSQL 14 atau lebih baru, serta Node.js 22.12 atau lebih baru. Untuk pengujian browser, siapkan Chrome, Chromium, atau Edge. PostgreSQL perlu menerima koneksi dari PHP.
+Siapkan PHP 8.2 atau lebih baru dengan `pdo_pgsql`, `mbstring`, `zip`, dan dukungan Argon2id, PostgreSQL 14 atau lebih baru, serta Node.js 22.12 atau lebih baru. Untuk pengujian browser, siapkan Chrome, Chromium, atau Edge. PostgreSQL perlu menerima koneksi dari PHP.
 
 1. Buat basis data `eduquest` yang dimiliki role lokal `eduquest`, atau gunakan nama database dan role lain melalui variabel lingkungan di bawah.
 2. Bangun stylesheet dan font lokal. Asset hasil build tersedia di `public/assets/`.

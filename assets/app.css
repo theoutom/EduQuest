@@ -352,4 +352,6 @@ button[aria-busy="true"] { cursor: progress; }
   .score-panel, .review-card { break-inside: avoid; }
   .review-card + .review-card { margin-top: .75rem; }
   .review-card .code-block { white-space: pre-wrap; color: inherit; background: none; }
+  .teacher-export-table { overflow: visible; }
+  .teacher-export-table .admin-table { min-width: 0; }
 }

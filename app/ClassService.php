@@ -191,8 +191,11 @@ final class ClassService
         return false;
     }
 
-    public function teacherResults(int $teacher, int $quiz): array
+    public function teacherResults(int $teacher, int $quiz, ?int $class = null): array
     {
+        if (!$this->teacherCanEdit($teacher, $quiz)) {
+            throw new QuizProblem(404, 'Kuis tidak ditemukan.');
+        }
         $statement = $this->db->prepare(<<<'SQL'
             SELECT s.name, a.score, a.finished_at
             FROM eduquest.attempts a JOIN eduquest.students s ON s.id = a.student_id
@@ -201,11 +204,11 @@ final class ClassService
                 JOIN eduquest.class_teachers ct ON ct.class_id = qc.class_id AND ct.teacher_id = ?
                 JOIN eduquest.class_students cs ON cs.class_id = qc.class_id AND cs.student_id = s.id
                 JOIN eduquest.classes c ON c.id = qc.class_id AND c.archived_at IS NULL
-                WHERE qc.quiz_id = a.quiz_id
+                WHERE qc.quiz_id = a.quiz_id AND (CAST(? AS integer) IS NULL OR qc.class_id = ?)
             )
-            ORDER BY a.finished_at DESC, a.id DESC LIMIT 100
+            ORDER BY a.finished_at DESC, a.id DESC
             SQL);
-        $statement->execute([$quiz, $teacher]);
+        $statement->execute([$quiz, $teacher, $class, $class]);
         return $statement->fetchAll();
     }
 

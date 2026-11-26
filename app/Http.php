@@ -83,6 +83,10 @@ final class Http
                 $this->masteryManage($student, true);
                 return;
             }
+            if ($this->method === 'GET' && preg_match('~^/guru/kuis/(\d{1,10})/ekspor/(nilai|soal)/(csv|xlsx|cetak)$~D', $this->path, $match)) {
+                $this->teacherExport($student, $this->positive($match[1], 404), $match[2], $match[3]);
+                return;
+            }
             if (preg_match('~^/guru/kuis(?:/(\d{1,10}))?$~D', $this->path, $match)) {
                 $this->teacherQuiz($student, isset($match[1]) ? $this->positive($match[1], 404) : null);
                 return;
@@ -627,6 +631,113 @@ final class Http
                 throw $error;
             }
             $this->page('admin-quiz', 'Editor Kuis', $data + $page);
+        }
+    }
+
+    private function teacherExport(int $teacher, int $quizId, string $kind, string $format): void
+    {
+        $editor = adminDatabase();
+        $classes = new ClassService($editor);
+        $editor->beginTransaction();
+        try {
+            $editor->query('SELECT pg_advisory_xact_lock_shared(476152004)');
+            if (!$classes->teacherCanEdit($teacher, $quizId)) {
+                throw new QuizProblem(404, 'Kuis tidak ditemukan.');
+            }
+            $quiz = (new AdminStore($editor, $teacher))->quiz($quizId);
+            $classValue = $this->input($_GET, 'kelas');
+            $classId = $classValue === '' ? null : $this->positive($classValue);
+            $results = $kind === 'nilai' ? $classes->teacherResults($teacher, $quizId, $classId) : [];
+            $editor->commit();
+        } catch (Throwable $error) {
+            if ($editor->inTransaction()) {
+                $editor->rollBack();
+            }
+            throw $error;
+        }
+
+        if ($format === 'cetak') {
+            $this->page('teacher-export', $kind === 'nilai' ? 'Cetak nilai' : 'Cetak soal', compact('quiz', 'results', 'kind'));
+            return;
+        }
+
+        if ($kind === 'nilai') {
+            $rows = [['Nama siswa', 'Nilai', 'Waktu selesai (UTC)']];
+            foreach ($results as $result) {
+                $rows[] = [$result['name'], (int) $result['score'], $result['finished_at']];
+            }
+        } else {
+            $rows = [['Nomor', 'Pertanyaan', 'Kode', 'Pilihan', 'Kunci', 'Pembahasan']];
+            foreach ($quiz['questions'] as $index => $question) {
+                $options = [];
+                $correct = '';
+                foreach ($question['options'] as $option) {
+                    $letter = chr(64 + (int) $option['position']);
+                    $options[] = $letter . '. ' . $option['label'];
+                    if ($option['correct']) { $correct = $letter; }
+                }
+                $rows[] = [$index + 1, $question['stem'], $question['snippet'] ?? '', implode("\n", $options), $correct, $question['explanation']];
+            }
+        }
+        if ($format === 'xlsx') {
+            $this->teacherSpreadsheet($rows, $kind, $quizId);
+            return;
+        }
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="eduquest-' . $kind . '-' . $quizId . '.csv"');
+        $out = fopen('php://output', 'wb');
+        fwrite($out, "\xEF\xBB\xBF");
+        foreach ($rows as $row) {
+            foreach ($row as &$cell) {
+                if (is_string($cell) && preg_match('/^[\x00-\x20]*[=+@-]/u', $cell)) { $cell = "'" . $cell; }
+            }
+            unset($cell);
+            fputcsv($out, $row, ',', '"', '');
+        }
+        fclose($out);
+    }
+
+    private function teacherSpreadsheet(array $rows, string $kind, int $quizId): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'eduquest-xlsx-');
+        if ($path === false) { throw new QuizProblem(503, 'Berkas Excel belum dapat dibuat.'); }
+        try {
+            $zip = new ZipArchive();
+            if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new QuizProblem(503, 'Berkas Excel belum dapat dibuat.');
+            }
+            $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+            $contentTypes = $xml . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>';
+            $rootRels = $xml . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+            $workbook = $xml . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="EduQuest" sheetId="1" r:id="rId1"/></sheets></workbook>';
+            $workbookRels = $xml . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>';
+            $sheet = $xml . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+            foreach ($rows as $index => $row) {
+                $number = $index + 1;
+                $sheet .= '<row r="' . $number . '">';
+                foreach ($row as $column => $cell) {
+                    $reference = chr(65 + $column) . $number;
+                    if (is_int($cell)) {
+                        $sheet .= '<c r="' . $reference . '"><v>' . $cell . '</v></c>';
+                        continue;
+                    }
+                    $clean = preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', (string) $cell);
+                    $text = htmlspecialchars($clean ?? '', ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                    $sheet .= '<c r="' . $reference . '" t="inlineStr"><is><t xml:space="preserve">' . $text . '</t></is></c>';
+                }
+                $sheet .= '</row>';
+            }
+            $sheet .= '</sheetData></worksheet>';
+            foreach (['[Content_Types].xml' => $contentTypes, '_rels/.rels' => $rootRels, 'xl/workbook.xml' => $workbook, 'xl/_rels/workbook.xml.rels' => $workbookRels, 'xl/worksheets/sheet1.xml' => $sheet] as $name => $content) {
+                if (!$zip->addFromString($name, $content)) { throw new QuizProblem(503, 'Berkas Excel belum dapat dibuat.'); }
+            }
+            if (!$zip->close()) { throw new QuizProblem(503, 'Berkas Excel belum dapat dibuat.'); }
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="eduquest-' . $kind . '-' . $quizId . '.xlsx"');
+            header('Content-Length: ' . filesize($path));
+            readfile($path);
+        } finally {
+            @unlink($path);
         }
     }
 

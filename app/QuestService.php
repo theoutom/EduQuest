@@ -147,12 +147,19 @@ final class QuestService
                    CASE WHEN q.kind = 'answers' THEN answered.amount ELSE 1 END
             FROM eduquest.attempts current_attempt
             JOIN eduquest.quests q ON q.quiz_id = current_attempt.quiz_id
+            JOIN eduquest.quizzes quiz ON quiz.id = current_attempt.quiz_id
             CROSS JOIN LATERAL (
                 SELECT count(*)::int AS amount FROM eduquest.answers
                 WHERE attempt_id = current_attempt.id AND option_id IS NOT NULL
                   AND answer_updated_at >= q.starts_at AND answer_updated_at < q.ends_at
             ) answered
             WHERE current_attempt.id = ? AND q.archived_at IS NULL AND q.kind = ?
+              AND (quiz.audience = 'all_classes' OR EXISTS (
+                SELECT 1 FROM eduquest.quiz_classes allowed
+                JOIN eduquest.class_students member ON member.class_id = allowed.class_id
+                JOIN eduquest.classes active_class ON active_class.id = member.class_id AND active_class.archived_at IS NULL
+                WHERE allowed.quiz_id = quiz.id AND member.student_id = current_attempt.student_id
+              ))
               AND (q.kind <> 'answers' OR answered.amount > 0)
               AND (CASE WHEN q.kind = 'review' THEN clock_timestamp() ELSE current_attempt.finished_at END) >= q.starts_at
               AND (CASE WHEN q.kind = 'review' THEN clock_timestamp() ELSE current_attempt.finished_at END) < q.ends_at

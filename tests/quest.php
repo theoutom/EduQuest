@@ -114,6 +114,14 @@ try {
     $quiz->confirmReview(1, $reviewAttempt);
     throw new RuntimeException('A different student must not confirm another student’s review.');
 } catch (QuizProblem $problem) { if ($problem->status !== 404) { throw $problem; } }
+$db->exec("UPDATE eduquest.quizzes SET audience = 'selected_classes' WHERE id = $reviewQuiz");
+$db->exec("INSERT INTO eduquest.quiz_classes VALUES ($reviewQuiz, $class)");
+$quiz->confirmReview(2, $reviewAttempt);
+if ($quest->totalXp(2) !== 0) {
+    throw new RuntimeException('A revoked quiz must not award quest progress from an old result.');
+}
+$db->exec("UPDATE eduquest.quizzes SET audience = 'all_classes' WHERE id = $reviewQuiz");
+$db->exec("DELETE FROM eduquest.quiz_classes WHERE quiz_id = $reviewQuiz");
 $quiz->confirmReview(2, $reviewAttempt);
 $quiz->confirmReview(2, $reviewAttempt);
 if ($quest->totalXp(2) !== 15 || (int) $db->query("SELECT count(*) FROM eduquest.quest_events WHERE quest_id = $reviewQuest")->fetchColumn() !== 1) {
