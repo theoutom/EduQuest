@@ -74,6 +74,7 @@ function enableQuiz(form) {
     currentQuestion.setAttribute('aria-label', 'Soal ' + currentQuestion.value + ', ' + (state === 'ragu' ? 'ragu-ragu' : state));
     document.querySelector('[data-answered]').textContent = answered;
     progress.value = answered;
+    progress.textContent = answered + '/' + progress.max;
   }
 
   async function saveUntilCurrent() {

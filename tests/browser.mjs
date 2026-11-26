@@ -106,6 +106,7 @@ try {
   assert.equal(new URL(page.url()).pathname, new URL(session).pathname);
   await page.click('[data-retry]');
   await status('Tersimpan');
+  assert.equal(await page.$eval('[data-progress]', node => node.textContent), '1/3');
   await page.click('[name="doubtful"]');
   await status('Tersimpan');
   await page.reload();
