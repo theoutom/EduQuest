@@ -88,6 +88,34 @@ expectClassProblem(fn () => $quiz->submit(2, $attemptId), 404);
 expectClassProblem(fn () => $quiz->review(2, $attemptId), 404);
 $classes->assignStudent($b, 2);
 $quiz->submit(2, $attemptId);
+$owner = (int) $db->query("INSERT INTO eduquest.students (username, name, role, enabled, password_hash) VALUES ('guru-pemilik', 'Guru Pemilik', 'teacher', true, 'fixture') RETURNING id")->fetchColumn();
+$otherTeacher = (int) $db->query("INSERT INTO eduquest.students (username, name, role, enabled, password_hash) VALUES ('guru-lain', 'Guru Lain', 'teacher', true, 'fixture') RETURNING id")->fetchColumn();
+$classes->assignTeacher($b, $owner);
+$classes->assignTeacher($b, $otherTeacher);
+$db->exec("UPDATE eduquest.quizzes SET teacher_owner = $owner WHERE id = $quizId");
+$db->exec("SET lock_timeout = '250ms'");
+$other->beginTransaction();
+$other->query('SELECT pg_advisory_xact_lock(476152004)');
+try {
+    $classes->teacherResults($owner, $quizId);
+    throw new RuntimeException('Reading results must wait for concurrent access changes.');
+} catch (PDOException $error) {
+    if ($error->getCode() !== '55P03') { throw $error; }
+} finally {
+    $other->rollBack();
+    $db->exec('RESET lock_timeout');
+}
+if (count($classes->teacherResults($owner, $quizId)) !== 1) {
+    throw new RuntimeException('The assigned owner must see the results of their class quiz.');
+}
+if ($classes->teacherResults($otherTeacher, $quizId) !== [] || $classes->teacherResults(1, $quizId) !== []) {
+    throw new RuntimeException('A class member or another teacher must not read an owned quiz’s results directly.');
+}
+$db->exec("UPDATE eduquest.students SET enabled = false WHERE id = $owner");
+if ($classes->teacherResults($owner, $quizId) !== []) {
+    throw new RuntimeException('A disabled teacher must not read results.');
+}
+$db->exec("UPDATE eduquest.students SET enabled = true WHERE id = $owner");
 $db->exec("DELETE FROM eduquest.class_students WHERE class_id = $b AND student_id = 2");
 if ($quiz->review(2, $attemptId)['score'] !== 0) {
     throw new RuntimeException('Completed results must remain accessible to their owner.');

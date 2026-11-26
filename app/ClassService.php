@@ -193,7 +193,17 @@ final class ClassService
 
     public function teacherResults(int $teacher, int $quiz): array
     {
-        $statement = $this->db->prepare(<<<'SQL'
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
+        try {
+            $this->db->query('SELECT pg_advisory_xact_lock_shared(476152004)');
+            if (!$this->teacherCanEdit($teacher, $quiz)) {
+                if ($ownsTransaction) { $this->db->commit(); }
+                return [];
+            }
+            $statement = $this->db->prepare(<<<'SQL'
             SELECT s.name, a.score, a.finished_at
             FROM eduquest.attempts a JOIN eduquest.students s ON s.id = a.student_id
             WHERE a.quiz_id = ? AND a.finished_at IS NOT NULL AND EXISTS (
@@ -205,8 +215,14 @@ final class ClassService
             )
             ORDER BY a.finished_at DESC, a.id DESC LIMIT 100
             SQL);
-        $statement->execute([$quiz, $teacher]);
-        return $statement->fetchAll();
+            $statement->execute([$quiz, $teacher]);
+            $results = $statement->fetchAll();
+            if ($ownsTransaction) { $this->db->commit(); }
+            return $results;
+        } catch (Throwable $error) {
+            if ($ownsTransaction && $this->db->inTransaction()) { $this->db->rollBack(); }
+            throw $error;
+        }
     }
 
     public function removeStudent(int $class, int $student): void

@@ -1,6 +1,7 @@
 /.local/
 /.hallmark/shots/
 /node_modules/
+/vendor/
 /.env
 /.env.*
 !/.env.example

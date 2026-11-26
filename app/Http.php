@@ -63,6 +63,16 @@ final class Http
             return;
         }
         if ($this->student['role'] === 'teacher') {
+            if ($this->method === 'GET' && preg_match('~^/guru/kuis/(\d{1,10})/ekspor/(nilai|soal)/(pdf|xlsx)$~D', $this->path, $match)) {
+                $id = $this->positive($match[1], 404);
+                $kind = $match[2] === 'nilai' ? 'scores' : 'questions';
+                $document = (new TeacherExport(adminDatabase()))->document($student, $id, $kind);
+                $data = $match[3] === 'pdf' ? TeacherExportFormat::pdf($document) : TeacherExportFormat::xlsx($document);
+                header('Content-Type: ' . ($match[3] === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'));
+                header('Content-Disposition: attachment; filename="' . $match[2] . '-kuis-' . $id . '.' . $match[3] . '"');
+                echo $data;
+                return;
+            }
             if ($this->path === '/' && $this->method === 'GET') {
                 $this->redirect('/guru');
                 return;

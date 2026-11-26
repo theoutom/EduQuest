@@ -1,3 +1,8 @@
+FROM composer:2 AS phpdeps
+WORKDIR /build
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-progress --prefer-dist --no-scripts
+
 FROM node:24-alpine AS assets
 WORKDIR /build
 COPY package.json package-lock.json ./
@@ -9,15 +14,17 @@ RUN npm run build
 
 FROM dunglas/frankenphp:1-php8.4-alpine
 WORKDIR /app
-RUN install-php-extensions pdo_pgsql mbstring curl \
+RUN install-php-extensions pdo_pgsql mbstring curl dom \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
-    && php -r 'exit(extension_loaded("pdo_pgsql") && extension_loaded("mbstring") && extension_loaded("curl") && defined("PASSWORD_ARGON2ID") && in_array("argon2id", password_algos(), true) ? 0 : 1);'
+    && php -r 'exit(extension_loaded("pdo_pgsql") && extension_loaded("mbstring") && extension_loaded("curl") && extension_loaded("dom") && extension_loaded("zlib") && defined("PASSWORD_ARGON2ID") && in_array("argon2id", password_algos(), true) ? 0 : 1);'
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY deploy/supabase-root-2021.crt /app/certs/supabase-root-2021.crt
 COPY app app/
 COPY views views/
 COPY public/index.php public/index.php
 COPY public/assets/app.js public/assets/app.js
+COPY public/assets/pvp-wait.js public/assets/pvp-wait.js
+COPY --from=phpdeps /build/vendor/ /app/vendor/
 COPY --from=assets /build/public/assets/ public/assets/
 ENV EDUQUEST_SECURE_COOKIES=1
 EXPOSE 80

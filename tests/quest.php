@@ -56,6 +56,11 @@ $db->exec("INSERT INTO eduquest.quiz_classes VALUES ($quizId, $class)");
 if ($quest->visible(1) !== []) {
     throw new RuntimeException('A quest must not advertise a quiz that the student cannot access.');
 }
+$restrictedReview = (int) $db->query("INSERT INTO eduquest.quests (title, quiz_id, starts_at, ends_at, target, xp, kind) VALUES ('Pembahasan terbatas', $quizId, clock_timestamp() - interval '1 hour', clock_timestamp() + interval '1 hour', 1, 10, 'review') RETURNING id")->fetchColumn();
+$quiz->confirmReview(1, $attempt);
+if ((int) $db->query("SELECT count(*) FROM eduquest.quest_rewards WHERE quest_id = $restrictedReview AND student_id = 1")->fetchColumn() !== 0) {
+    throw new RuntimeException('An old review must not award quest XP after quiz access is revoked.');
+}
 $teacher = (int) $db->query("INSERT INTO eduquest.students (username, name, role, enabled, password_hash) VALUES ('guru-quest', 'Guru Quest', 'teacher', true, 'fixture') RETURNING id")->fetchColumn();
 $db->exec("INSERT INTO eduquest.class_teachers VALUES ($class, $teacher)");
 $db->exec("UPDATE eduquest.quizzes SET teacher_owner = $teacher WHERE id = $quizId");

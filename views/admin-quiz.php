@@ -12,6 +12,15 @@ $pending = formValue($submitted, 'action');
         <?php if (!empty($teacherEditor)): ?>
         <section class="panel">
             <h2>Hasil siswa kelas saya</h2>
+            <?php if ($isPublished): ?>
+            <p>Unduh dokumen kuis dan hasil siswa yang saat ini berada dalam kelas Anda.</p>
+            <div class="admin-shortcuts">
+                <a class="button button-quiet" href="<?= h($endpoint) ?>/ekspor/nilai/pdf">Nilai PDF</a>
+                <a class="button button-quiet" href="<?= h($endpoint) ?>/ekspor/nilai/xlsx">Nilai Excel</a>
+                <a class="button button-quiet" href="<?= h($endpoint) ?>/ekspor/soal/pdf">Soal dan kunci PDF</a>
+                <a class="button button-quiet" href="<?= h($endpoint) ?>/ekspor/soal/xlsx">Soal dan kunci Excel</a>
+            </div>
+            <?php endif; ?>
             <?php if (!$teacherResults): ?><p>Belum ada hasil.</p><?php endif; ?>
             <ul class="admin-list">
                 <?php foreach ($teacherResults as $result): ?>

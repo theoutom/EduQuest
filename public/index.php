@@ -21,6 +21,8 @@ require "$root/app/MinigameHttp.php";
 require "$root/app/PvpService.php";
 require "$root/app/PvpController.php";
 require "$root/app/MasteryService.php";
+require "$root/app/TeacherExport.php";
+require "$root/app/TeacherExportFormat.php";
 require "$root/app/Auth.php";
 require "$root/app/AdminStore.php";
 require "$root/app/ClassService.php";

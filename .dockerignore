@@ -6,6 +6,8 @@
 !deploy/supabase-root-2021.crt
 !package.json
 !package-lock.json
+!composer.json
+!composer.lock
 !app/
 !app/*.php
 !views/
@@ -18,3 +20,4 @@
 !public/index.php
 !public/assets/
 !public/assets/app.js
+!public/assets/pvp-wait.js
